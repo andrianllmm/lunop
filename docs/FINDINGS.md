@@ -51,11 +51,25 @@ What the data says, what it means for LUNOP, and what's still open. Source: the 
 
 ## Open issues
 
-- ⚠️ **Iloilo 3-week forecast gets worse with rain (−10%).** Check forecast skill on post-storm weeks and test an Iloilo-specific rain term before relying on h = 3.
+- **Iloilo 3-week forecast (resolved in the back-test):** the EDA's −10% at h = 3 is gone once training starts in 2013 (`with_cases` −16% deviance vs season + recent cases at h = 3). An Iloilo-specific rain slope didn't help, so it isn't used. See [Model](#model).
 - **Hazard layer (resolved, #30):** the 25-yr layer had only 5 of 180 Iloilo barangays above 0, so priority fell back to population. `hazard_pct` now uses the 100-yr layer, any level (160 barangays > 0). About 12 layer variants were compared on Zamboanga, so its ρ is somewhat optimistic.
 - Iloilo has no barangay case data, so the ranking can't be validated where it's used.
 - PIDSR week definition (onset vs report) affects how the lag is read.
 - NOAH hazard predates recent flood control.
+
+## Challenges and mitigation
+
+| Challenge | Impact | Mitigation | Status |
+|---|---|---|---|
+| No barangay case data for Iloilo | A barangay ranking can't be trained or validated where it's used | Rank by **estimated exposure** (hazard × population), not predicted cases; community flood reports raise a barangay's score; checked on Zamboanga, the only city with barangay cases | Done; validation still needs Iloilo barangay cases |
+| 25-yr hazard layer near zero | Only 5 of 180 Iloilo barangays had hazard > 0, so priority fell back to population | Switched to the NOAH 100-yr layer, any level (160 barangays > 0); ρ = 0.52 vs case rate in Zamboanga (#30) | Done; about 12 layer variants were compared, so ρ is somewhat optimistic |
+| 2011–12 (Sendong-era) outbreaks skew training | Fits from 2008 predict Iloilo 2018–2022 at about 2× the observed level (5.9 vs 2.7 cases/week) | Train from 2013; the 2008 fits and a no-Sendong-weeks fit stay in `backtest.md` as ablations; 2008–2012 events are still forecast out of sample in LOEO | Done; chosen after seeing 2018–2022, so the back-test is mildly optimistic |
+| Live rain (Open-Meteo) differs from training rain (CCHAIN) | A live forecast fed different rain than it was trained on would be biased | Compared 781 weeks: r = 0.71, CCHAIN/Open-Meteo = 1.092; live rain is scaled by 1.092 (TRD §5.5) | Done; `rain_only` loses 3–4 points of its gain on live rain (−7 to −8% vs −11%) |
+| Weak High+ alerts from the live `rain_only` model | Flags High+ on 1 of 54 surge weeks (2%) in 2018–2022; reaches Elevated on 33% | Stated next to every live alert; `with_cases` flags High+ on 6 of 7 LOEO surges, and becomes the live model once weekly case data arrives | Open; needs a CHO case feed |
+| Iloilo 3-week forecast worse with rain in the EDA (−10%) | Countdown and hospital readiness lean on weeks 2–3 | Re-tested in the back-test: `with_cases` −16% deviance at h = 3; an Iloilo rain slope didn't help and isn't used | Resolved |
+| PIDSR week definition unknown (onset vs report) | Shifts how the 2–3 week lag is read | Stated as a limitation; listed as an open question for the CHO | Open |
+| NOAH maps predate recent flood control (e.g., Jaro floodway) | Hazard may overstate areas now protected | Stated as a limitation; community reports and chronic flood spots show where flooding still happens | Open; needs post-flood-control maps |
+| Offline field use | Health workers and residents lose signal during floods | Installable PWA: data and basemap precached; reports queued on the device and sent when back online | Done (#25) |
 
 ## Model
 
