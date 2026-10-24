@@ -57,12 +57,13 @@ pjdsc-26/
 │   │   ├── features.py      design matrices per horizon and variant
 │   │   ├── rain_check.py    CCHAIN vs Open-Meteo archive (§5.5)
 │   │   ├── modeling/
-│   │   │   ├── train.py     fit both model variants → models/model.json
+│   │   │   ├── train.py     fit the deployed variants → models/model.json
+│   │   │   ├── forecast.py  intervals, baseline ratios, alert levels
 │   │   │   ├── evaluate.py  back-test, event study, LOEO, Zamboanga check → performance.json
 │   │   │   └── predict.py   daily: Open-Meteo → forecast.json
 │   │   └── replay.py        per-event bundles → replay/*.json
 │   ├── tests/               pytest
-│   ├── models/              model.json (committed; the daily job reads it)
+│   ├── models/              model.json, thresholds.json, rain_scale.json (committed; the daily job reads them)
 │   ├── reports/             backtest.md, figures
 │   └── pyproject.toml
 ├── web/
@@ -127,15 +128,15 @@ log μ = city_c + s(woy_{t+h}) + Σ_{k=0..8} β_k · log1p(rain[c, t+h−k]) + �
 - Rain lags after week t use Open-Meteo forecast rain (up to 16 days), then the seasonal mean rain for that week.
 - `level_c`: mean log cases over the city's past 52 weeks, to absorb long-term trends.
 - `recent_cases[c, t]`: mean cases over weeks t−1..t, so a skipped PIDSR week doesn't drop the row.
-- One model per horizon h ∈ {1, 2, 3, 4}. Dispersion α is estimated by maximum likelihood.
-- **Iloilo at h ≥ 3 is unproven.** In the EDA back-test, adding rain to season + recent cases cut Iloilo's all-weeks error by 9% at h = 1 and 4% at h = 2, but raised it by 10% at h = 3. `modeling/evaluate.py` reports every metric per horizon, and tests an Iloilo × rain interaction. If h = 3–4 still lose on post-storm weeks, the UI caveats those weeks.
-- **Two variants**, fitted in the same loop:
-  - `with_cases` includes γ. It is used for replay and the back-test, and compared against the seasonal + recent-cases baseline.
-  - `rain_only` drops both γ and `level_c`, which need recent cases. It is used live, where there are no current case counts.
-- Fit on 2008–2017, validate on 2018–2022, refit on all years for deployment.
-- `rain_only` trains on 2013 onward. Fitted from 2008, the 2011–12 outbreaks push Iloilo's intercept to about twice the 2018–2022 level (5.9 vs 2.7 cases/week), and with no `level_c` it can't correct. Back-test (2018–2022, Iloilo, Poisson deviance): seasonal 3.18, `rain_only` 2.82 (−11%) when both start in 2013.
+- One model per horizon h ∈ {1, 2, 3, 4}. α is fitted by profile likelihood over IRLS fits (`statsmodels` `NegativeBinomial`'s joint Newton fit diverged).
+- **Variants**, fitted in the same loop (`features.VARIANTS`):
+  - `with_cases` includes γ and `level_c`. It is used for replay and the back-test.
+  - `rain_only` drops both, since they need recent cases. It is used live, where there are no current case counts.
+  - `seasonal` (city + woy) is the baseline that `ratio` is taken against. `cases` (seasonal + γ + `level_c`) is a back-test baseline only.
+- **Training window: 2013 onward** (`TRAIN_START_YEAR`). Fit on 2013–2017, validate on 2018–2022, refit on 2013–2022 for deployment. Fitted from 2008, the 2011–12 outbreaks push Iloilo's level to about twice the 2018–2022 level (5.9 vs 2.7 cases/week): `rain_only` then does worse than seasonal, and `with_cases` loses 6–16% on Iloilo deviance. This choice was made after seeing the 2018–2022 results, so the back-test is mildly optimistic; the 2008 fits stay in `reports/backtest.md` as ablations. 2008–2012 events are still forecast in LOEO, out of sample.
 - Back-test stand-in for forecast rain: observed rain for weeks t+1..t+2 (the 16-day window), `rain_clim` after. The same rule builds the training features, so coefficients match what the live model sees.
-- α is fitted by profile likelihood over IRLS fits (`statsmodels` `NegativeBinomial`'s joint Newton fit diverged).
+- **Result** (Iloilo, 2018–2022, Poisson deviance at h = 1/2/3/4): seasonal 3.18; seasonal + recent cases 2.01/2.44/2.80/2.91; `with_cases` 1.72/2.05/2.35/2.42 (−15/−16/−16/−17%). `rain_only` 2.82/2.82/2.81/2.80 vs seasonal (−11%), and −7 to −8% when fed Open-Meteo rain. The EDA's h = 3 loss is gone. An Iloilo × rain slope doesn't help (h = 3–4 slightly worse), so it isn't used.
+- The rain lag curve peaks at lag 3 (rate ratio per log unit of rain), matching the EDA.
 
 **Dropped, with reasons recorded on the Methods page:**
 - River discharge (GloFAS) added about 1% on top of rain, so it was dropped.
@@ -151,18 +152,19 @@ log μ = city_c + s(woy_{t+h}) + Σ_{k=0..8} β_k · log1p(rain[c, t+h−k]) + �
   "drivers": ["Rain in the week of Oct 13 was 3.1× normal"] }
 ```
 
-`lo` and `hi` are the 10th and 90th percentiles of the predictive distribution. `baseline` is the city's seasonal mean for that week of year. `ratio = expected / baseline`.
+`lo` and `hi` are the 10th and 90th percentiles of the predictive distribution. `baseline` is the `seasonal` model's mean for that week. `ratio = expected / baseline`.
 
 ### 5.3 Alert levels
 
-Applied to the maximum `ratio` over weeks +1 to +4. Thresholds are tuned on the 2018–2022 back-test so that "High" fires in about 5% of weeks.
+Applied to the maximum `ratio` over weeks +1 to +4. Thresholds are tuned per variant on the 2018–2022 Iloilo back-test so each level or higher fires in 15% (Elevated), 5% (High) and 1% (Severe) of weeks. They are stored in `pipeline/models/thresholds.json`.
 
-| Level | Rule |
-|---|---|
-| Normal | ratio < 1.5 |
-| Elevated | 1.5 ≤ ratio < 2.5 |
-| High | 2.5 ≤ ratio < 4 |
-| Severe | ratio ≥ 4, or P(cases ≥ city p95) ≥ 0.5 |
+| Level | `rain_only` (live) | `with_cases` (replay) |
+|---|---|---|
+| Elevated | ratio ≥ 1.69 | ratio ≥ 1.69 |
+| High | ratio ≥ 1.94 | ratio ≥ 2.6 |
+| Severe | ratio ≥ 2.14, or P(cases ≥ city p95) ≥ 0.5 | ratio ≥ 3.7, or P(cases ≥ city p95) ≥ 0.5 |
+
+`rain_only` ratios span a narrow range, because rain alone moves the forecast less than recent cases do, so its levels sit close together. City p95 is computed over 2013–2022 (Iloilo: 9 cases/week).
 
 ### 5.4 Evaluation (`modeling/evaluate.py` → `performance.json`, `reports/backtest.md`)
 
@@ -174,28 +176,39 @@ Applied to the maximum `ratio` over weeks +1 to +4. Thresholds are tuned on the 
 
 **Secondary**
 - All-weeks Poisson deviance and MAE on 2018–2022, per horizon, for all cities and for Iloilo, reporting the Iloilo h = 3 loss openly. EDA baseline: ~9–11% gain across cities; Iloilo +9%, +4%, −10% at h = 1–3.
-- Ablations: without rain; without the Sendong-era weeks (CDO, Iloilo 2011–12).
+- Ablations: without rain (`cases`); training from 2008, with and without the Sendong-era weeks (CDO, Iloilo 2011–12); an Iloilo-specific rain slope; `rain_only` fed Open-Meteo rain.
 - Event-study curve: cases ÷ seasonal norm at weeks −2 to +6 after heavy rain.
 
 **Barangay check:** score Zamboanga barangays with hazard × population and report the Spearman ρ against the observed case rate, with a bootstrap 95% CI.
 
-The LOEO results choose the three replay events: two hits and one miss or false alarm.
+The LOEO results choose the three replay events: two hits and one miss or false alarm, from different storms. Picked: 2011-08-15 (hit), 2012-05-28 (hit), 2009-07-27 (miss).
+
+**Results** (`reports/backtest.md`):
+- LOEO, 16 Iloilo events: mean absolute peak-timing error 1.3 weeks. Weeks +1..+6 MAE, mean over events at h = 1/2: `with_cases` 13.4/12.1 vs seasonal 15.3 and seasonal + recent cases 24.7/15.7. The 2011 outbreak dominates the mean; by **median**, seasonal (3.5) beats `with_cases` (4.0–4.4) on typical events.
+- Alerts at the event week, `with_cases`: High or Severe on 6 of 7 surges (observed ≥ 1.5× baseline over weeks +1..+4), with 1 false alarm among 7 alerts. `rain_only`: 1 of 8.
+- Weekly, Iloilo 2018–2022: `with_cases` High+ catches 19% of surge weeks, and 23% of its High+ alerts are false. `rain_only` High+ catches 2%.
+- Event study: cases reach 3.3× the seasonal norm 2–3 weeks after heavy rain (all cities and Iloilo).
+- Zamboanga: ρ = 0.23 (95% CI 0.04–0.42) for `hazard_pct`, 0.26 for the medium layer, 0.00 for high, 0.25 for hazard × population.
 
 ### 5.5 Rain source check (`pipeline/lunop/rain_check.py`)
 
-The model is trained on CCHAIN rain and run live on Open-Meteo rain. Both are likely ERA5-based, so we check before building any calibration:
+The model is trained on CCHAIN rain and run live on Open-Meteo rain, so we check before building any calibration:
 - Compare weekly Iloilo rain sums, CCHAIN vs Open-Meteo archive at the same points, 2008–2022.
 - If **r ≥ 0.9 and the ratio of means is in 0.9–1.1**, use Open-Meteo as is.
 - Otherwise store **one scale factor** (ratio of means) in `pipeline/models/model.json` and apply it to live rain.
 - The scatter plot and the result are shown on the Methods page.
+- **Result:** r = 0.71, ratio of means 1.09, so live rain is scaled by 1.092. Open-Meteo's ERA5 gives the same r (0.73), so CCHAIN's rain is probably not ERA5; its daily pattern (dry days with isolated events) looks like satellite rain. A scale factor can't fix the weak correlation, so the back-test also runs `rain_only` on Open-Meteo rain for Iloilo: it keeps a 7–8% gain over seasonal (vs 11% on CCHAIN rain).
+- Points: a 3 × 3 grid over Iloilo's bounding box, averaged. The archive pull is cached in `data/external/`.
 
 ### 5.6 Known limitations
 
 - **PIDSR week meaning** (symptom onset vs report) is unknown, which affects how the lag is read.
-- **Iloilo long-horizon skill:** rain hurts the all-weeks h = 3 forecast for Iloilo (§5.1).
-- **Barangay check is one city:** Zamboanga ρ = 0.23 (95% CI 0.03–0.40), carried by the 25-yr *medium* hazard layer; *high* alone shows nothing.
-- **Outliers:** one Sendong-era week (554 cases, CDO) can pull the coefficients; see the ablation.
-- **Non-stationarity:** Iloilo's flood control works (~2012, to be verified) may have changed the relationship. Test with a post-2012 indicator.
+- **Live alerts are weak.** Without recent cases, `rain_only` beats seasonal on average but rarely flags surges (2% of surge weeks at High+). Most outbreak signal comes from recent cases, which live mode doesn't have. The UI should present the live level as "rain risk", not as an outbreak detector.
+- **Overshoot at outbreak peaks:** γ is above 1 at h = 1 (cases forecast to grow faster than they are), so during the 2011 outbreak `with_cases` forecast 241 for a week that had 113.
+- **Typical events:** by median LOEO error, seasonal beats `with_cases`; the gains come from big events.
+- **Barangay check is one city:** Zamboanga ρ = 0.23 (95% CI 0.04–0.42), carried by the 25-yr *medium* hazard layer; *high* alone shows nothing.
+- **Non-stationarity:** cases dropped after 2012 (possibly Iloilo's flood control works, to be verified). Training from 2013 handles it for now; an Iloilo post-2012 indicator is moot once 2008–2012 are excluded.
+- **Rain source mismatch:** r = 0.71 between CCHAIN and Open-Meteo (§5.5).
 - **Data ends in 2022;** live mode runs without current cases.
 
 ## 6. Decision engine (TypeScript, `web/lib/`)

@@ -56,3 +56,17 @@ What the data says, what it means for LUNOP, and what's still open. Source: the 
 - Iloilo has no barangay case data, so the ranking can't be validated where it's used.
 - PIDSR week definition (onset vs report) affects how the lag is read.
 - NOAH hazard predates recent flood control.
+
+## Model
+
+Source: `pipeline/reports/backtest.md` (`make evaluate`). Details and caveats: [TRD §5](TRD.md#5-forecast-model).
+
+| Finding | Result |
+|---|---|
+| Training window | Train from 2013: fits that include 2011–12 predict Iloilo 2018–2022 at ~2× the observed level |
+| Rain helps | Iloilo deviance −15 to −17% vs season + recent cases at h = 1–4; the EDA's h = 3 loss is gone |
+| Live model | `rain_only` −11% vs seasonal for Iloilo; −7 to −8% when fed Open-Meteo rain |
+| Events (LOEO) | Peak timing off by 1.3 weeks on average; `with_cases` alerts High+ on 6 of 7 surges, 1 false alarm |
+| Weak spots | Live alerts flag few surges (2% of surge weeks at High+); overshoot at outbreak peaks; seasonal wins on typical events by median |
+| Rain source | CCHAIN vs Open-Meteo weekly r = 0.71; live rain scaled by 1.092 |
+
