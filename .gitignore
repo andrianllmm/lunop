@@ -5,5 +5,5 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Data
-data/
+/data/
 .pytest_cache/
