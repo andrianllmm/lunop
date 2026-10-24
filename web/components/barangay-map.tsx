@@ -19,6 +19,8 @@ export type MapPoint = { id: string; lat: number; lon: number; r?: number; class
 /** Red for outlines; MapLibre paint can't read CSS variables. */
 const OUTLINE = "#e5484d"
 
+const NO_FEATURES: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] }
+
 function bounds(features: BarangayFeature[]): [[number, number], [number, number]] {
   let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity]
   for (const f of features)
@@ -43,11 +45,15 @@ function useLabelLayer() {
 function Polygons({
   filled,
   outlines,
+  selected,
   onHover,
+  onSelect,
 }: {
   filled: GeoJSON.FeatureCollection
   outlines: GeoJSON.FeatureCollection
+  selected: GeoJSON.FeatureCollection
   onHover?: (psgc: string | null) => void
+  onSelect?: (psgc: string) => void
 }) {
   const beforeId = useLabelLayer()
   const { resolvedTheme } = useMap()
@@ -60,9 +66,9 @@ function Polygons({
         fillPaint={{ "fill-color": ["get", "color"], "fill-opacity": 0.75 }}
         fillHoverPaint={{ "fill-opacity": 0.95 }}
         linePaint={{ "line-color": resolvedTheme === "dark" ? "#000000" : "#ffffff", "line-width": 0.5, "line-opacity": 0.6 }}
-        interactive={!!onHover}
+        interactive={!!(onHover || onSelect)}
         onHover={(e) => onHover?.(e ? String(e.feature.properties?.psgc) : null)}
-        onClick={(e) => onHover?.(String(e.feature.properties?.psgc))}
+        onClick={(e) => (onSelect ?? onHover)?.(String(e.feature.properties?.psgc))}
         beforeId={beforeId}
       />
       <MapGeoJSON
@@ -70,6 +76,13 @@ function Polygons({
         data={outlines}
         fillPaint={false}
         linePaint={{ "line-color": OUTLINE, "line-width": 2.5 }}
+        beforeId={beforeId}
+      />
+      <MapGeoJSON
+        id="selected"
+        data={selected}
+        fillPaint={false}
+        linePaint={{ "line-color": resolvedTheme === "dark" ? "#ffffff" : "#000000", "line-width": 3 }}
         beforeId={beforeId}
       />
     </>
@@ -85,7 +98,9 @@ export function BarangayMap({
   fill,
   outlined,
   points = [],
+  selected,
   onHover,
+  onSelect,
   className,
 }: {
   features: BarangayFeature[]
@@ -93,7 +108,11 @@ export function BarangayMap({
   fill: (b: Barangay) => string
   outlined?: Set<string>
   points?: MapPoint[]
+  /** psgc drawn with a heavy outline. */
+  selected?: string | null
   onHover?: (psgc: string | null) => void
+  /** Called on click; without it, a click hovers (for touch). */
+  onSelect?: (psgc: string) => void
   className?: string
 }) {
   const [offline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine)
@@ -109,11 +128,18 @@ export function BarangayMap({
     () => ({ type: "FeatureCollection" as const, features: features.filter((f) => outlined?.has(f.properties.psgc)) }),
     [features, outlined],
   )
+  const highlight = useMemo(
+    () =>
+      selected
+        ? { type: "FeatureCollection" as const, features: features.filter((f) => f.properties.psgc === selected) }
+        : NO_FEATURES,
+    [features, selected],
+  )
 
   return (
     <div className={cn("relative h-96 w-full overflow-hidden rounded-md border", className)}>
       <Map bounds={initialBounds} fitBoundsOptions={{ padding: 16 }} blank={offline} cooperativeGestures>
-        <Polygons filled={filled} outlines={outlines} onHover={onHover} />
+        <Polygons filled={filled} outlines={outlines} selected={highlight} onHover={onHover} onSelect={onSelect} />
         {points.map((p) => (
           <MapMarker key={p.id} longitude={p.lon} latitude={p.lat}>
             <MarkerContent>
