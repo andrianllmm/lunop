@@ -59,6 +59,7 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 3. Turn the forecast into specific actions with targets, quantities and deadlines.
 4. Collect community flood and wading reports, which are the only direct measure of exposure, and turn repeated reports into a fix-list of chronic flood spots.
 5. Validate on past storms in a way judges can replay and check, and state openly what the evidence doesn't support.
+6. Keep working in the field without signal, since floods knock out connectivity exactly when the app is needed.
 
 ### Non-goals
 - Diagnosis or medical advice to individuals.
@@ -70,7 +71,7 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 | Persona | Need | Main page |
 |---|---|---|
 | **CHO epidemiologist / health officer** (primary) | Decide where to send prophylaxis and health workers, and when to alert hospitals | Overview, Priority areas |
-| **Barangay health worker / BDRRM officer** | Report flooding; know if their barangay is a priority | Report, Priority areas |
+| **Barangay health worker / BDRRM officer** | Report flooding, often with weak or no signal; know if their barangay is a priority | Report, Priority areas |
 | **City engineering / DRRMO** | Know which spots flood every storm | Priority areas → Chronic flood spots |
 | **Hospital administrator** | Know when admissions peak and how many | Overview |
 | **Resident** (secondary) | Report flooding | Report |
@@ -83,10 +84,11 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 4. As a BHW or resident, I report flood depth and wading on a phone in under 30 seconds.
 5. As a DRRMO engineer, I see the spots that flooded in storm after storm, and why, so I can prioritize drainage work.
 6. As a judge, I replay a past storm and compare the forecast with what actually happened.
+7. As a BHW in a flooded barangay with no signal, I open the app, see the last forecast and priority list, and file a report that sends itself when I'm back online.
 
 ## 6. Features
 
-The app is a dashboard with a sidebar: **Overview, Replay, Priority areas, Report, Methods & Validation**. It has six features. Each one is built to be polished rather than broad.
+The app is a dashboard with a sidebar: **Overview, Replay, Priority areas, Report, Methods & Validation**. It has seven features. Each one is built to be polished rather than broad.
 
 ### F1. Surge forecast (Overview)
 - Expected weekly cases for weeks +1 to +4 with an 80% interval, against the seasonal baseline.
@@ -94,7 +96,7 @@ The app is a dashboard with a sidebar: **Overview, Replay, Priority areas, Repor
 - Live mode uses observed rain to date plus Open-Meteo forecast rain (16 days). There is no live case data, so it runs the rain-only model and says so.
 - Drivers in plain language: "Rain in the week of Oct 6 was 3.1× normal."
 - Past performance (hit rate, false alarms) shown next to the alert.
-- **Acceptance:** shows the data date; loads in under 2 s; keeps working on the last good forecast if the daily update fails.
+- **Acceptance:** shows the data date; loads in under 2 s; keeps working on the last good forecast if the daily update fails or the device is offline.
 
 ### F2. Barangay priority (Overview map, Priority areas page)
 - Map and ranked table of all 180 barangays, labelled **"estimated exposure"**.
@@ -116,8 +118,9 @@ Each recommendation shows its target, quantity, deadline, reason and source guid
 ### F4. Community flood reports (Report page)
 - Mobile-first form in English and Filipino: location (GPS, or pick a barangay), depth (ankle / knee / waist / chest+), duration, waded yes/no. No photo, no login.
 - Rate limit per IP plus a honeypot field.
+- **Works offline:** GPS is matched to a barangay on the device. Without signal, the report is saved on the phone, marked "pending", and sent automatically when the connection returns. It keeps the time it was observed, not the time it was sent.
 - A report **raises its barangay's score**. The **72-hour prophylaxis countdown starts only on corroboration**: ≥3 knee-or-deeper reports from different devices within 24 h, or 1 such report while the city alert is Elevated or higher.
-- **Acceptance:** submission in under 30 s; appears on the map within 1 minute.
+- **Acceptance:** submission in under 30 s; appears on the map within 1 minute of reaching the server; a report filed offline is sent once, with no duplicates, after reconnecting.
 
 ### F5. Storm replay (Replay page, default demo path)
 - Three past Iloilo events chosen from the leave-one-event-out back-test: **two hits and one honest miss or false alarm**, with the overall hit rate shown.
@@ -130,6 +133,14 @@ Each recommendation shows its target, quantity, deadline, reason and source guid
 - Each spot shows its infrastructure context: distance to the nearest river or canal, building density, NOAH hazard. This explains *why it floods* and is not used for scoring.
 - Until real reports accumulate, the list is seeded from NOAH high-hazard areas and the simulated replay reports, both labelled.
 - **Acceptance:** each spot lists its report dates and context, and links to its barangay.
+
+### F7. Offline field use (installable app)
+- Installable to the home screen. After one online visit, every page opens without signal.
+- Offline, the app shows the **last downloaded** forecast, priority list, chronic spots and reports, under a banner: "Offline. Data from {date}."
+- Replay and Methods work fully offline. The Iloilo basemap is cached ahead of time.
+- Reports filed offline queue on the device (F4), with a visible count of pending reports.
+- Offline, the app can't refresh the forecast or see other people's new reports. A barangay's countdown starts only once corroborating reports reach the server.
+- **Acceptance:** after one online visit, in airplane mode, Overview, Priority areas, Replay and Methods load with data, and a report queues and sends on reconnect.
 
 ### Methods & Validation page
 Back-test results, event study, the leave-one-event-out table, the Zamboanga check with its CI, and the limitations (§8). This page is where judges check the rigor.
@@ -144,6 +155,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 | All-weeks error, 2018–2022 held out (secondary) | Reported by horizon for all cities and for Iloilo, including the 3-week loss |
 | Barangay ranking check (Zamboanga) | Rank correlation **with 95% CI** and the detection-bias caveat |
 | Report form completion time | Under 30 s (n ≥ 5) |
+| Offline check | F7 acceptance passes on Android Chrome and iOS Safari |
 | Finals: expert review (CHO or public health instructor); SUS | Rated relevant and feasible; SUS ≥ 70 |
 
 ## 8. Constraints and assumptions
@@ -152,6 +164,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 - Only **Zamboanga** has usable barangay case data, and **Iloilo has none**, so the ranking is checked in another city. That data is also distorted by **detection bias**, so it can only weakly validate a barangay ranking.
 - NOAH hazard maps come from mid-2010s surveys and predate some flood control works (the Jaro floodway, year to be verified).
 - Live mode has no current case counts; it relies on rain and seasonality.
+- Offline data is only as fresh as the device's last sync, and a device that never opened the app online has nothing cached.
 - Doxycycline needs a prescription. Dose ranges are for **supply planning** only, and follow current DOH guidance (to be verified).
 - Intervention effects can't be measured from this data. Any impact estimate is labelled as an assumption.
 
@@ -167,6 +180,8 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 | Spam or false reports | Rate limit, honeypot, corroboration before any countdown |
 | Overlap with 2025 flood-mapping finalists (drAIn, AGIP, Bernoulli) | Position on the health response; chronic spots come from people's wading reports, not hydrology |
 | Live data outage | Last good forecast stays up with its date; replay is fully offline |
+| No signal in flooded areas | Installable offline app (F7); reports queue on the device and send on reconnect |
+| Stale data mistaken for current | Offline banner with the data date on every page |
 
 ## 10. Roadmap
 
