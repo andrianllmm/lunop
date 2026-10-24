@@ -89,3 +89,21 @@ export function seedSpots(barangays: Barangay[], cfg: Config = config): Spot[] {
       context: context(b),
     }))
 }
+
+/**
+ * Chronic spots in each set of replay reports, as of that set's last report. Shown,
+ * labelled, until real reports accumulate. A cell found in several sets keeps the
+ * one with the most dates.
+ */
+export function replaySpots(reportSets: FloodReport[][], barangays: Barangay[], cfg: Config = config): Spot[] {
+  const byId = new Map<string, Spot>()
+  for (const reports of reportSets) {
+    if (reports.length === 0) continue
+    const now = new Date(Math.max(...reports.map((r) => Date.parse(r.observed_at))))
+    for (const s of chronicSpots(reports, barangays, now, cfg)) {
+      const prev = byId.get(s.id)
+      if (!prev || s.dates.length > prev.dates.length) byId.set(s.id, s)
+    }
+  }
+  return [...byId.values()].sort((a, b) => b.dates.length - a.dates.length || b.report_count - a.report_count)
+}

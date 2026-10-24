@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { geohash } from "@/lib/geohash"
-import { chronicSpots, seedSpots } from "@/lib/spots"
+import { chronicSpots, replaySpots, seedSpots } from "@/lib/spots"
 import { barangay, report } from "@/lib/test-utils"
 import type { Depth } from "@/lib/types"
 
@@ -72,5 +72,18 @@ describe("chronicSpots", () => {
 describe("seedSpots", () => {
   it("lists NOAH hazard barangays above the threshold", () => {
     expect(seedSpots(barangays).map((s) => [s.id, s.source])).toEqual([["A", "noah"]])
+  })
+})
+
+describe("replaySpots", () => {
+  it("dates each replay from its own last report and keeps the richer copy of a cell", () => {
+    // Years before `now`, so chronicSpots with today's date would drop them
+    const older = ["01", "02", "03"].map((d) => at(`2011-08-${d}T09:00:00+08:00`, "knee", { simulated: true }))
+    const newer = ["01", "02", "03", "04"].map((d) => at(`2012-06-${d}T09:00:00+08:00`, "knee", { simulated: true }))
+    expect(chronicSpots([...older, ...newer], barangays, now)).toEqual([])
+
+    const spots = replaySpots([older, newer, []], barangays)
+    expect(spots).toHaveLength(1)
+    expect(spots[0]).toMatchObject({ source: "reports", simulated: true, dates: ["2012-06-01", "2012-06-02", "2012-06-03", "2012-06-04"] })
   })
 })
