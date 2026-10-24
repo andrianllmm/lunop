@@ -4,12 +4,12 @@ import { PageHeader } from "@/components/page-header"
 import { PlaceholderCard } from "@/components/placeholder"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export const metadata: Metadata = { title: "Barangays" }
+export const metadata: Metadata = { title: "Priority areas" }
 
-export default function BarangaysPage() {
+export default function PriorityPage() {
   return (
     <>
-      <PageHeader title="Barangays" description="Where to act first, and why." />
+      <PageHeader title="Priority areas" description="Barangays to reach first, and why." />
       <Tabs defaultValue="ranking">
         <TabsList>
           <TabsTrigger value="ranking">Ranking</TabsTrigger>

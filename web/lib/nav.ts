@@ -16,7 +16,7 @@ export type NavItem = {
 export const navItems: NavItem[] = [
   { title: "Overview", href: "/", icon: LayoutDashboardIcon },
   { title: "Replay", href: "/replay", icon: HistoryIcon },
-  { title: "Barangays", href: "/barangays", icon: MapPinnedIcon },
+  { title: "Priority areas", href: "/priority", icon: MapPinnedIcon },
   { title: "Report flooding", href: "/report", icon: MegaphoneIcon },
   { title: "Methods", href: "/methods", icon: FlaskConicalIcon },
 ]
