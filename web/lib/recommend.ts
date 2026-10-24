@@ -88,7 +88,7 @@ export function recommend(
 
     out.push({
       id: "prophylaxis",
-      action: "Give doxycycline prophylaxis",
+      action: "Give doxycycline",
       target,
       quantity: sumDoses(list.flatMap((t) => (t.row ? [t.row] : []))),
       deadline,
@@ -97,7 +97,7 @@ export function recommend(
     })
     out.push({
       id: "advisory",
-      action: "Issue avoid-wading and seek-care advisory",
+      action: "Send avoid-wading advisory",
       target,
       quantity: null,
       deadline,
@@ -113,7 +113,7 @@ export function recommend(
     const rows = [...top].sort((a, b) => Number(b.access_flag) - Number(a.access_flag))
     out.push({
       id: "case_finding",
-      action: "Run active case finding",
+      action: "Find cases door to door",
       target: rows.map((r) => ({ psgc: r.psgc, name: r.name })),
       quantity: null,
       deadline: localMidnight(peak!, off, cfTo + 1).toISOString(),
@@ -127,7 +127,7 @@ export function recommend(
   if (elevated && d !== null && d < 0) {
     out.push({
       id: "pre_position",
-      action: "Pre-position doxycycline stock",
+      action: "Pre-position doxycycline",
       target: top.map((r) => ({ psgc: r.psgc, name: r.name })),
       quantity: sumDoses(top),
       deadline: localMidnight(peak!, off).toISOString(),
@@ -141,11 +141,11 @@ export function recommend(
     const week = forecast.weeks.reduce((a, b) => (b.expected > a.expected ? b : a))
     out.push({
       id: "hospital_readiness",
-      action: "Prepare hospitals for the peak week",
+      action: "Ready hospitals for the peak week",
       target: [],
-      quantity: { lo: week.lo, hi: week.hi, unit: "cases (80% interval)" },
+      quantity: { lo: week.lo, hi: week.hi, unit: "expected cases" },
       deadline: localMidnight(week.week_start, off).toISOString(),
-      rationale: `Expected ${week.expected} cases in the week of ${fmtDate(week.week_start)}, ${week.ratio}× the usual`,
+      rationale: `${week.expected} cases expected in the week of ${fmtDate(week.week_start)} (80% interval ${week.lo}–${week.hi}), ${week.ratio}× the usual`,
       source: sources.hospital_readiness,
       checklist: cfg.recommend.stock_checklist,
     })
@@ -156,7 +156,7 @@ export function recommend(
     const target = [...new Map(spots.map((s) => [s.psgc, { psgc: s.psgc, name: s.name }])).values()]
     out.push({
       id: "drain_clearing",
-      action: "Clear drains and control rodents at chronic flood spots",
+      action: "Clear drains at chronic flood spots",
       target,
       quantity: { lo: spots.length, hi: spots.length, unit: "spots" },
       deadline: null,
