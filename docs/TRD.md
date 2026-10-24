@@ -262,6 +262,9 @@ Inputs: alert level, days since rain peak `d`, priority list, access flags, fore
 
 Each rule returns `{id, action, target, quantity, deadline, rationale, source}`.
 
+- Top N counts only barangays with W_b > 0.
+- Deadlines are PHT midnights: prophylaxis at rain peak + 72 h (or the countdown's own deadline), case finding through day 10, pre-positioning by the rain peak, hospital readiness by the start of the peak week.
+
 ### 6.5 Chronic flood spots (`spots.ts`)
 
 - Group knee-or-deeper reports into ~150 m cells (geohash precision 7).
