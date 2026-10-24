@@ -26,6 +26,17 @@ export type Barangay = {
   bldg_density: number | null
 }
 
+export const FACILITY_KINDS = ["hospital", "health_center", "bhs"] as const
+export type FacilityKind = (typeof FACILITY_KINDS)[number]
+
+/** Properties of a feature in `facilities.geojson` (OSM, context only). */
+export type Facility = { name: string; kind: FacilityKind }
+
+/** `facilities.geojson`, with the facility nearest each barangay's centroid keyed by psgc. */
+export type FacilityCollection = GeoJSON.FeatureCollection<GeoJSON.Point, Facility> & {
+  nearest: Record<string, Facility & { dist_m: number }>
+}
+
 export type FloodReport = {
   client_id: string
   observed_at: string
