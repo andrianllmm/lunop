@@ -60,10 +60,10 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 4. Collect community flood and wading reports, which are the only direct measure of exposure, and turn repeated reports into a fix-list of chronic flood spots.
 5. Validate on past storms in a way judges can replay and check, and state openly what the evidence doesn't support.
 
-### Non-goals (round 1)
+### Non-goals
 - Diagnosis or medical advice to individuals.
 - Flood simulation. We use existing rain forecasts and NOAH hazard maps.
-- Forced-wading routing (§11), an LLM-written brief, CHO case upload, river discharge, user accounts, SMS or push notifications, cities other than Iloilo in the UI.
+- Forced-wading routing (§10), an LLM-written brief, CHO case upload, river discharge, user accounts, SMS or push notifications, cities other than Iloilo in the UI.
 
 ## 4. Users
 
@@ -128,7 +128,7 @@ Each recommendation shows its target, quantity, deadline, reason and source guid
 ### F6. Chronic flood spots (Barangays page tab)
 - Places where knee-or-deeper reports recur over **≥3 separate days**, shown on the map and as a list for city engineering and DRRMO.
 - Each spot shows its infrastructure context: distance to the nearest river or canal, building density, NOAH hazard. This explains *why it floods* and is not used for scoring.
-- In round 1 the list is seeded from NOAH high-hazard areas and the simulated replay reports, both labelled.
+- Until real reports accumulate, the list is seeded from NOAH high-hazard areas and the simulated replay reports, both labelled.
 - **Acceptance:** each spot lists its report dates and context, and links to its barangay.
 
 ### Methods & Validation page
@@ -168,18 +168,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 | Overlap with 2025 flood-mapping finalists (drAIn, AGIP, Bernoulli) | Position on the health response; chronic spots come from people's wading reports, not hydrology |
 | Live data outage | Last good forecast stays up with its date; replay is fully offline |
 
-## 10. Timeline (round 1)
-
-| Date | Milestone |
-|---|---|
-| Thu Oct 22 | Model pipeline, back-test, JSON export; Next.js scaffold, map, Overview |
-| Fri Oct 23 | Replay, reports and corroboration, recommendations, chronic spots, Methods page, deploy. **Start slides and video script in parallel** |
-| **Sat Oct 24, 12:00 PM** | **Code freeze** |
-| Sat Oct 24, afternoon | Video (≤3 min), slides (≤20), README, fresh-clone reproducibility test |
-| **Sat Oct 24, 11:59 PM** | **Final submission** |
-| Nov 14 | Finals: live demo, 10-min presentation + 10-min Q&A |
-
-## 11. Roadmap (finals and after)
+## 10. Roadmap
 
 | Item | Needs |
 |---|---|
@@ -189,7 +178,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 | Checking where flooding actually happens | Sentinel-1 flood maps; accumulated reports |
 | Data after 2022 | Mendeley PIDSR/EDCS 2019–2023; CHO data request |
 
-## 12. Open questions
+## 11. Open questions
 
 - Current DOH prophylaxis guideline: exposure tiers, child dosing, exclusions.
 - A CHO contact for expert review and recent case data.
