@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { BarangayMap, type BarangayCollection } from "@/components/barangay-map"
 import { DecisionCard, LevelBadge } from "@/components/decision-card"
 import { ForecastChart } from "@/components/forecast-chart"
+import { PriorityLegend, priorityColor } from "@/components/priority-legend"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +16,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { config } from "@/lib/config"
 import { getJSON } from "@/lib/data"
 import { fmtDate, fmtRange } from "@/lib/format"
-import type { BarangayPriority } from "@/lib/priority"
 import { engineState } from "@/lib/state"
 import { daysBetween } from "@/lib/time"
 import type { Forecast } from "@/lib/types"
@@ -24,22 +24,6 @@ import type { Forecast } from "@/lib/types"
 const STALE_DAYS = 2
 
 const TOP_LIST = 5
-
-/** Color-blind-safe sequential oranges (ColorBrewer), by priority percentile. */
-const PRIORITY_BINS: [number, string, string][] = [
-  [90, "#a63603", "Highest"],
-  [75, "#e6550d", "High"],
-  [50, "#fd8d3c", "Medium"],
-  [0, "#fdbe85", "Low"],
-]
-
-/** No exposure (no hazard, no reports) stays see-through so the basemap shows. */
-const NONE = "rgba(148, 163, 184, 0.3)"
-
-function priorityColor(row: BarangayPriority | undefined) {
-  if (!row || row.weight === 0) return NONE
-  return PRIORITY_BINS.find(([min]) => row.priority >= min)![1]
-}
 
 export function OverviewView() {
   const [forecast, setForecast] = useState<Forecast | null>(null)
@@ -134,24 +118,7 @@ export function OverviewView() {
               onHover={setHover}
               className="h-[24rem]"
             />
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              {PRIORITY_BINS.map(([min, color, label]) => (
-                <span key={min} className="flex items-center gap-1">
-                  <span className="size-3 rounded-sm" style={{ background: color }} />
-                  {label}
-                </span>
-              ))}
-              <span className="flex items-center gap-1">
-                <span className="size-3 rounded-sm" style={{ background: NONE }} />
-                Not flood-prone
-              </span>
-              {outlined.size > 0 && (
-                <span className="flex items-center gap-1">
-                  <span className="size-3 rounded-sm border-2 border-destructive" />
-                  Countdown running
-                </span>
-              )}
-            </div>
+            <PriorityLegend countdowns={outlined.size > 0} />
             <p className="min-h-5 text-sm">
               {hovered ? (
                 <>
