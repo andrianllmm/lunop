@@ -22,6 +22,9 @@ ZAMBOANGA_BRGY_SOURCE = "Zamboanga_PIDSR_2013-2022"  # the only usable barangay 
 SEED = 42
 RAIN_LAGS = range(9)  # weeks 0..8
 HORIZONS = (1, 2, 3, 4)
+FORECAST_WEEKS = 2  # weeks after t covered by the 16-day rain forecast; later weeks use rain_clim
+RECENT_WEEKS = 2  # recent_cases = mean cases over weeks t-1..t (skips PIDSR gaps)
+HARMONICS = 2  # sine/cosine pairs of week of year
 TRAIN_END_YEAR = 2017  # fit 2008-2017, validate 2018-2022
 CLIM_START_YEAR = 2003  # rain climatology uses 2003..TRAIN_END_YEAR, so it never sees validation years
 LEVEL_WEEKS = 52  # trailing window for level_c
