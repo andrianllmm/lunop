@@ -1,12 +1,13 @@
 "use client"
 
-import { SearchIcon } from "lucide-react"
+import { HospitalIcon, HousePlusIcon, PlusIcon, SearchIcon, type LucideIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { BarangayMap, type BarangayCollection, type MapPoint } from "@/components/barangay-map"
 import { NONE, PriorityLegend, priorityColor } from "@/components/priority-legend"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -19,10 +20,17 @@ import type { BarangayPriority } from "@/lib/priority"
 import type { ReplayBundle, ReplayEvent } from "@/lib/replay"
 import { replaySpots, seedSpots, type Spot } from "@/lib/spots"
 import { engineState, type EngineState } from "@/lib/state"
-import type { Barangay, Forecast } from "@/lib/types"
+import { FACILITY_KINDS, type Barangay, type FacilityCollection, type FacilityKind, type Forecast } from "@/lib/types"
 
 /** Flood-map barangays on the spots map: ColorBrewer blue, as water. */
 const SEED = "#3182bd"
+
+/** Facility pins: cool colors that stand apart from the orange priority fill, plus an icon per kind. */
+const FACILITY: Record<FacilityKind, { name: string; legend: string; icon: LucideIcon; className: string }> = {
+  hospital: { name: "hospital", legend: "Hospitals", icon: HospitalIcon, className: "bg-blue-700" },
+  health_center: { name: "health center", legend: "Health centers", icon: PlusIcon, className: "bg-violet-700" },
+  bhs: { name: "BHS", legend: "Barangay health stations (partial)", icon: HousePlusIcon, className: "bg-teal-700" },
+}
 
 function meters(m: number | null) {
   if (m === null) return "—"
@@ -33,6 +41,8 @@ export function PriorityView() {
   const [forecast, setForecast] = useState<Forecast | null>(null)
   const [geo, setGeo] = useState<BarangayCollection | null>(null)
   const [replays, setReplays] = useState<ReplayBundle[] | null>(null)
+  const [facilities, setFacilities] = useState<FacilityCollection | null>(null)
+  const [waterways, setWaterways] = useState<GeoJSON.FeatureCollection | null>(null)
   const [now, setNow] = useState<Date | null>(null)
   const [tab, setTab] = useState("ranking")
   const [selected, setSelected] = useState<string | null>(null)
@@ -47,11 +57,15 @@ export function PriorityView() {
       getJSON<ReplayEvent[]>("/data/replay/index.json").then((es) =>
         Promise.all(es.map((e) => getJSON<ReplayBundle>(`/data/replay/${e.event_id}.json`))),
       ),
+      getJSON<FacilityCollection>("/data/facilities.geojson"),
+      getJSON<GeoJSON.FeatureCollection>("/data/waterways.geojson"),
     ])
-      .then(([f, g, r]) => {
+      .then(([f, g, r, fac, w]) => {
         setForecast(f)
         setGeo(g)
         setReplays(r)
+        setFacilities(fac)
+        setWaterways(w)
         setNow(new Date())
       })
       .catch((e: Error) => setError(e.message))
@@ -82,7 +96,8 @@ export function PriorityView() {
   }, [])
 
   if (error) return <p className="text-sm text-destructive">Could not load data ({error}).</p>
-  if (!forecast || !geo || !state || !replays) return <Skeleton className="h-[40rem] w-full" />
+  if (!forecast || !geo || !state || !replays || !facilities || !waterways)
+    return <Skeleton className="h-[40rem] w-full" />
 
   return (
     <Tabs value={tab} onValueChange={setTab}>
@@ -95,12 +110,13 @@ export function PriorityView() {
           geo={geo}
           state={state}
           barangays={barangays}
+          facilities={facilities}
           selected={selected ?? state.ranked[0].psgc}
           onSelect={setSelected}
         />
       </TabsContent>
       <TabsContent value="spots">
-        <Spots geo={geo} spots={spots} onShow={show} />
+        <Spots geo={geo} spots={spots} waterways={waterways} onShow={show} />
       </TabsContent>
     </Tabs>
   )
@@ -110,16 +126,33 @@ function Ranking({
   geo,
   state,
   barangays,
+  facilities,
   selected,
   onSelect,
 }: {
   geo: BarangayCollection
   state: EngineState
   barangays: Barangay[]
+  facilities: FacilityCollection
   selected: string
   onSelect: (psgc: string) => void
 }) {
   const [query, setQuery] = useState("")
+  const [shown, setShown] = useState<Set<FacilityKind>>(new Set())
+  const points: MapPoint[] = facilities.features
+    .filter((f) => shown.has(f.properties.kind))
+    .map((f, i) => {
+      const { icon: Icon, className } = FACILITY[f.properties.kind]
+      const [lon, lat] = f.geometry.coordinates
+      return { id: `${i}`, lat, lon, r: 10, className, icon: <Icon className="size-3 text-white" />, label: f.properties.name }
+    })
+  const toggle = (kind: FacilityKind, on: boolean) =>
+    setShown((s) => {
+      const next = new Set(s)
+      if (on) next.add(kind)
+      else next.delete(kind)
+      return next
+    })
   const rank = useMemo(() => new Map(state.ranked.map((r) => [r.psgc, r])), [state])
   const fill = useCallback((b: { psgc: string }) => priorityColor(rank.get(b.psgc)), [rank])
   const outlined = useMemo(() => new Set(state.countdowns.keys()), [state])
@@ -140,16 +173,37 @@ function Ranking({
             features={geo.features}
             fill={fill}
             outlined={outlined}
+            points={points}
             selected={selected}
             onSelect={onSelect}
             className="h-[28rem]"
           />
           <PriorityLegend countdowns={outlined.size > 0} />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <span>Show (OpenStreetMap):</span>
+            {FACILITY_KINDS.map((kind) => {
+              const { legend, icon: Icon, className } = FACILITY[kind]
+              return (
+                <label key={kind} className="flex cursor-pointer items-center gap-1.5">
+                  <Checkbox checked={shown.has(kind)} onCheckedChange={(on) => toggle(kind, on === true)} />
+                  <span className={`flex size-4 items-center justify-center rounded-full ${className}`}>
+                    <Icon className="size-2.5 text-white" />
+                  </span>
+                  {legend}
+                </label>
+              )
+            })}
+          </div>
         </CardContent>
       </Card>
 
       <div className="flex flex-col gap-6">
-        <Details row={rank.get(selected)!} barangay={byPsgc.get(selected)!} state={state} />
+        <Details
+          row={rank.get(selected)!}
+          barangay={byPsgc.get(selected)!}
+          nearest={facilities.nearest[selected]}
+          state={state}
+        />
         <Card>
           <CardContent className="flex flex-col gap-3">
             <div className="relative">
@@ -214,11 +268,13 @@ function Ranking({
 function Details({
   row,
   barangay,
+  nearest,
   state,
   className,
 }: {
   row: BarangayPriority
   barangay: Barangay
+  nearest: FacilityCollection["nearest"][string] | undefined
   state: EngineState
   className?: string
 }) {
@@ -258,6 +314,17 @@ function Details({
               </Badge>
             )}
           </dd>
+          {nearest && (
+            <>
+              <dt className="text-muted-foreground">Nearest health facility</dt>
+              <dd className="max-w-44 text-right">
+                {nearest.name}
+                <span className="block text-xs text-muted-foreground">
+                  {FACILITY[nearest.kind].name}, {meters(nearest.dist_m)} straight line
+                </span>
+              </dd>
+            </>
+          )}
         </dl>
 
         {actions.length > 0 && (
@@ -272,7 +339,17 @@ function Details({
   )
 }
 
-function Spots({ geo, spots, onShow }: { geo: BarangayCollection; spots: Spot[]; onShow: (psgc: string) => void }) {
+function Spots({
+  geo,
+  spots,
+  waterways,
+  onShow,
+}: {
+  geo: BarangayCollection
+  spots: Spot[]
+  waterways: GeoJSON.FeatureCollection
+  onShow: (psgc: string) => void
+}) {
   const seeds = useMemo(() => new Set(spots.filter((s) => s.source === "noah").map((s) => s.psgc)), [spots])
   const fill = useCallback((b: { psgc: string }) => (seeds.has(b.psgc) ? SEED : NONE), [seeds])
   const points: MapPoint[] = spots.flatMap((s) =>
@@ -294,8 +371,12 @@ function Spots({ geo, spots, onShow }: { geo: BarangayCollection; spots: Spot[];
     <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
       <Card className="lg:col-span-2">
         <CardContent className="flex flex-col gap-3">
-          <BarangayMap features={geo.features} fill={fill} points={points} className="h-[28rem]" />
+          <BarangayMap features={geo.features} fill={fill} points={points} lines={waterways} className="h-[28rem]" />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="h-0.5 w-4 bg-[#08306b] dark:bg-[#9ecae1]" />
+              River, creek, canal or drain (OSM)
+            </span>
             <span className="flex items-center gap-1">
               <span className="size-3 rounded-full bg-amber-500 dark:bg-amber-400" />
               Reported flooded 3+ times

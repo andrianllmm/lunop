@@ -1,4 +1,4 @@
-.PHONY: setup data train evaluate replay live web test all
+.PHONY: setup data osm train evaluate replay live web test all
 
 PY = cd pipeline && uv run python -m
 
@@ -8,6 +8,9 @@ setup:
 
 data:
 	$(PY) lunop.dataset
+
+osm:
+	$(PY) lunop.osm
 
 train:
 	$(PY) lunop.rain_check

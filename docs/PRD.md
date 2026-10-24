@@ -107,8 +107,8 @@ It has seven features. Each one is built to be polished rather than broad.
 ### F2. Barangay priority (Overview map, Priority areas page)
 - Map and ranked table of all 180 barangays, labelled **"estimated exposure"**.
 - Score = flood hazard (NOAH, 100-yr share of area, any level) × population, raised by recent community reports, scaled by the city surge.
-- Detail panel: score breakdown, population, hazard share, recent reports, nearest hospital and travel time, recommended actions.
-- Poor hospital access is a **column and a flag**, not a separate layer.
+- Detail panel: score breakdown, population, hazard share, recent reports, hospital travel time, nearest health facility, recommended actions.
+- Poor hospital access is a **column and a flag**. Hospital, health center and BHS pins (OpenStreetMap) are a toggleable **context layer**, never scored (detection bias, §2); the detail panel names the nearest one.
 - **Acceptance:** every score traces to its inputs; every weight is shown as an assumption; usable on a phone.
 
 ### F3. Recommendations (Overview decision card)
