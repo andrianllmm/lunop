@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useOnline } from "@/hooks/use-online"
+import { useReports } from "@/hooks/use-reports"
 import { config } from "@/lib/config"
 import { getJSON } from "@/lib/data"
 import { fmtDate, fmtRange } from "@/lib/format"
@@ -31,6 +32,7 @@ export function OverviewView() {
   const [geo, setGeo] = useState<BarangayCollection | null>(null)
   const [now, setNow] = useState<Date | null>(null)
   const online = useOnline()
+  const { reports } = useReports()
   const [hover, setHover] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,10 +50,10 @@ export function OverviewView() {
   }, [])
 
   const barangays = useMemo(() => geo?.features.map((f) => f.properties) ?? [], [geo])
-  // No live reports yet; the engine runs on the forecast alone
+  // Live reports, refetched every minute; until they load (or offline with none cached), the forecast alone
   const state = useMemo(
-    () => (forecast && now ? engineState(forecast, barangays, [], now) : null),
-    [forecast, barangays, now],
+    () => (forecast && now ? engineState(forecast, barangays, reports ?? [], now) : null),
+    [forecast, barangays, reports, now],
   )
   const rank = useMemo(() => new Map(state?.ranked.map((r) => [r.psgc, r])), [state])
   const fill = useCallback((b: { psgc: string }) => priorityColor(rank.get(b.psgc)), [rank])

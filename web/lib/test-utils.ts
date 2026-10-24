@@ -7,6 +7,7 @@ export function barangay(psgc: string, over: Partial<Barangay> = {}): Barangay {
     area_km2: 1,
     pop: 1000,
     hazard_pct: 0,
+    hazard_high_pct: 0,
     access30_pct: 100,
     travel_min: 5,
     hospital_dist_m: 500,

@@ -242,17 +242,31 @@ def lag_curve(model: dict) -> list[dict]:
 
 
 def zamboanga() -> dict:
-    """Spearman rho of hazard (and hazard x population) against the barangay case rate, bootstrap 95% CI."""
+    """Spearman rho of hazard (and hazard x population) against the barangay case rate, bootstrap 95% CI.
+
+    *_net_pop: partial rank correlation controlling for population, which alone tracks the rate.
+    """
     b = pd.read_parquet(PROCESSED / "zamboanga_brgy.parquet")
     b["score"] = b.hazard_pct / 100 * b["pop"]
     rng = np.random.default_rng(SEED)
     boot = [rng.integers(0, len(b), len(b)) for _ in range(BOOTSTRAP)]
+
+    def resid(y, x):
+        return y - np.polyval(np.polyfit(x, y, 1), x)
+
+    def net_pop(d: pd.DataFrame, col: str) -> float:
+        r = d[[col, "rate", "pop"]].rank()
+        return stats.pearsonr(resid(r[col], r["pop"]), resid(r.rate, r["pop"])).statistic
+
+    def ci(f) -> dict:
+        lo, hi = np.nanpercentile([f(b.iloc[i]) for i in boot], [2.5, 97.5])
+        return {"rho": round(float(f(b)), 3), "lo": round(float(lo), 3), "hi": round(float(hi), 3)}
+
     out = {"barangays": len(b), "cases": int(b.cases.sum())}
-    for col in ("hazard_pct", "hazard_25yr_med", "hazard_25yr_high", "score"):
-        rho = stats.spearmanr(b[col], b.rate).statistic
-        bs = [stats.spearmanr(b[col].iloc[i], b.rate.iloc[i]).statistic for i in boot]
-        lo, hi = np.nanpercentile(bs, [2.5, 97.5])
-        out[col] = {"rho": round(float(rho), 3), "lo": round(float(lo), 3), "hi": round(float(hi), 3)}
+    for col in ("hazard_pct", "hazard_25yr", "pop", "score"):
+        out[col] = ci(lambda d, col=col: stats.spearmanr(d[col], d.rate).statistic)
+    for col in ("hazard_pct", "hazard_25yr"):
+        out[f"{col}_net_pop"] = ci(lambda d, col=col: net_pop(d, col))
     return out
 
 
@@ -285,7 +299,8 @@ def report(perf: dict) -> str:
         "## Rain check (Iloilo weekly, CCHAIN vs Open-Meteo)\n\n"
         + f"r = {perf['rain_check']['r']}, ratio of means = {perf['rain_check']['ratio']}, scale = {perf['rain_check']['scale']}",
         f"## Zamboanga barangay check ({perf['zamboanga']['barangays']} barangays, {perf['zamboanga']['cases']} cases)\n\n"
-        "Spearman ρ against cases per 100k per year, bootstrap 95% CI:\n\n" + z.to_markdown(),
+        "Spearman ρ against cases per 100k per year, bootstrap 95% CI. hazard_pct is the NOAH 100-yr layer (any level), "
+        "hazard_25yr the 25-yr medium + high layer; *_net_pop controls for population:\n\n" + z.to_markdown(),
     ]) + "\n"
 
 

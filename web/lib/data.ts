@@ -49,7 +49,7 @@ export type Performance = {
   lag_curve: Record<"with_cases" | "rain_only", { lag: number; rr: number; lo: number; hi: number }[]>
   rain_check: { r: number; ratio: number; scale: number; n_weeks: number; weeks: [string, number, number][] }
   zamboanga: { barangays: number; cases: number } & Record<
-    "hazard_pct" | "hazard_25yr_med" | "hazard_25yr_high" | "score",
+    "hazard_pct" | "hazard_25yr" | "pop" | "score" | "hazard_pct_net_pop" | "hazard_25yr_net_pop",
     Correlation
   >
 }

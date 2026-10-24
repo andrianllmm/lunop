@@ -19,6 +19,8 @@ export type Barangay = {
   area_km2: number
   pop: number
   hazard_pct: number
+  /** 100-yr high flood hazard, % of area; sizes exposure and doses. */
+  hazard_high_pct: number
   access30_pct: number | null
   travel_min: number | null
   hospital_dist_m: number | null

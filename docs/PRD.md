@@ -38,7 +38,7 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 | Robustness | Holds without the Sendong-era outbreaks, and without Iloilo |
 | Out-of-sample gain from rain, all weeks (2018–2022 held out) | About 10% lower error across cities at 1–3 weeks ahead. Iloilo: **9% at 1 week, 4% at 2, 10% worse at 3** |
 | River discharge (GloFAS, Iloilo, earlier analysis) | Correlates 0.6 with rain; adds about 1% on top of rain. **Tested and dropped** |
-| Barangay flood hazard vs case rate (Zamboanga) | Spearman **0.23 (95% CI 0.03–0.40)** for medium/high 25-yr hazard; the signal comes from the *medium* layer |
+| Barangay flood hazard vs case rate (Zamboanga) | Spearman **0.52 (95% CI 0.37–0.66)** for the 100-yr hazard share; 0.37 after controlling for population |
 | Barangay infrastructure features (Zamboanga, Cagayan de Oro, earlier analysis) | Signs **flip between cities**; better hospital access goes with *more* recorded cases. This is **detection bias**: barangay counts show where cases get recorded, not where people get infected |
 | Who gets infected (Zamboanga) | Mostly **men aged 20–49** |
 | Season | Cases peak August–November; Iloilo peaks in **October** |
@@ -106,7 +106,7 @@ It has seven features. Each one is built to be polished rather than broad.
 
 ### F2. Barangay priority (Overview map, Priority areas page)
 - Map and ranked table of all 180 barangays, labelled **"estimated exposure"**.
-- Score = flood hazard (NOAH, 25-yr medium/high share) × population, raised by recent community reports, scaled by the city surge.
+- Score = flood hazard (NOAH, 100-yr share of area, any level) × population, raised by recent community reports, scaled by the city surge.
 - Detail panel: score breakdown, population, hazard share, recent reports, hospital travel time, nearest health facility, recommended actions.
 - Poor hospital access is a **column and a flag**. Hospital, health center and BHS pins (OpenStreetMap) are a toggleable **context layer**, never scored (detection bias, §2); the detail panel names the nearest one.
 - **Acceptance:** every score traces to its inputs; every weight is shown as an assumption; usable on a phone.
