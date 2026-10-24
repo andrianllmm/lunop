@@ -42,3 +42,40 @@ def level(ratio: float, p_exceed: float, thresholds: dict) -> str:
     if ratio >= thresholds["Severe"] or p_exceed >= SEVERE_PROB:
         return "Severe"
     return next((lv for lv in ("High", "Elevated") if ratio >= thresholds[lv]), "Normal")
+
+
+DRIVER_RATIO, DRIVER_MM = 1.5, 50  # a rain week is named as a driver at this multiple of normal and volume
+
+
+def bulletin(f: pd.DataFrame, thresholds: dict, rain: pd.DataFrame, daily: pd.Series, variant: str) -> dict:
+    """forecast.json (TRD 5.2) for one city and origin week t.
+
+    f: forecasts() rows for that city and t. rain: weekly `date, rain, rain_clim` around t, where
+    weeks after t hold the forecast. daily: daily rain (mm) indexed by date, observed then forecast.
+    Issued the Monday after week t, with data through its Sunday.
+    """
+    f = f.sort_values("h")
+    t = f.date.iloc[0]
+    issued = t + pd.Timedelta(days=7)
+    a = issue(f, thresholds).iloc[0]
+    near = daily[(daily.index >= issued - pd.Timedelta(days=14)) & (daily.index < issued + pd.Timedelta(days=16))]
+    return {
+        "issued": issued.date().isoformat(),
+        "data_as_of": (issued - pd.Timedelta(days=1)).date().isoformat(),
+        "variant": variant,
+        "level": a.level,
+        "ratio": round(float(a.ratio), 2),
+        "rain_peak_date": near.idxmax().date().isoformat() if len(near) and near.max() > 0 else None,
+        "weeks": [{"week_start": r.target_date.date().isoformat(), "expected": round(r.expected, 1), "lo": int(r.lo),
+                   "hi": int(r.hi), "baseline": round(r.baseline, 1), "ratio": round(r.ratio, 2)} for r in f.itertuples()],
+        "drivers": drivers(rain, t),
+    }
+
+
+def drivers(rain: pd.DataFrame, t: pd.Timestamp, n: int = 2) -> list[str]:
+    """The wettest weeks relative to normal among those the forecast uses (t-8 .. t+2)."""
+    w = rain[(rain.date >= t - pd.Timedelta(weeks=8)) & (rain.date <= t + pd.Timedelta(weeks=2))].dropna(subset=["rain"])
+    w = w.assign(x=w.rain / w.rain_clim)
+    w = w[(w.x >= DRIVER_RATIO) & (w.rain >= DRIVER_MM)].nlargest(n, "x").sort_values("date")
+    return [f"{'Forecast rain for' if r.date > t else 'Rain in'} the week of {r.date:%b} {r.date.day} "
+            f"{'is' if r.date > t else 'was'} {r.x:.1f}× normal ({r.rain:.0f} mm)" for r in w.itertuples()]

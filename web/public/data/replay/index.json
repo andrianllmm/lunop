@@ -1,0 +1,23 @@
+[
+ {
+  "event_id": "iloilo_city_2011-08-15",
+  "date": "2011-08-15",
+  "title": "Week of Aug 15, 2011",
+  "outcome": "hit",
+  "rain_week_mm": 170
+ },
+ {
+  "event_id": "iloilo_city_2012-05-28",
+  "date": "2012-05-28",
+  "title": "Week of May 28, 2012",
+  "outcome": "hit",
+  "rain_week_mm": 171
+ },
+ {
+  "event_id": "iloilo_city_2009-07-27",
+  "date": "2009-07-27",
+  "title": "Week of Jul 27, 2009",
+  "outcome": "miss",
+  "rain_week_mm": 168
+ }
+]
