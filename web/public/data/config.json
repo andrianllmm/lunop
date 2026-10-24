@@ -1,0 +1,57 @@
+{
+  "utc_offset_h": 8,
+  "priority": {
+    "depth_weight": { "ankle": 0.25, "knee": 0.5, "waist": 1.0, "chest": 1.5 },
+    "wade_weight": 1.5,
+    "report_saturation": 10,
+    "report_weight": 0.5,
+    "report_window_days": 7,
+    "access_top_pct": 75,
+    "access_max_pct": 50
+  },
+  "doses": {
+    "f_contact": [0.1, 0.3],
+    "courses_per_person": 1,
+    "note": "Doxycycline per DOH leptospirosis guidance: 200 mg single dose within 24 to 72 h of low-risk exposure; 200 mg once daily for 3 to 5 days for moderate or high risk. Not for children under 8 or pregnant women. Confirm current guidance with the CHO."
+  },
+  "corroboration": {
+    "min_depth": "knee",
+    "min_devices": 3,
+    "window_h": 24,
+    "single_report_level": "Elevated",
+    "countdown_h": 72
+  },
+  "recommend": {
+    "top_n": { "Elevated": 5, "High": 10, "Severe": 20 },
+    "prophylaxis_max_day": 3,
+    "case_finding_days": [3, 10],
+    "drain_after_day": 10,
+    "stock_checklist": [
+      "Doxycycline 100 mg capsules",
+      "Penicillin G and ceftriaxone for severe cases",
+      "IV fluids",
+      "Dialysis slots at referral hospitals",
+      "Leptospirosis rapid test kits"
+    ],
+    "advisory": {
+      "en": "Avoid wading in floodwater. If you waded, see a health center if you get a fever within 2 weeks.",
+      "fil": "Iwasang lumusong sa baha. Kung lumusong ka, magpatingin sa health center kapag nilagnat sa loob ng 2 linggo."
+    },
+    "advisory_audience": "Working-age men, who make up most cases",
+    "sources": {
+      "prophylaxis": "DOH leptospirosis prophylaxis guidance",
+      "advisory": "DOH leptospirosis prevention advisory",
+      "case_finding": "DOH leptospirosis surveillance guidance",
+      "hospital_readiness": "DOH leptospirosis clinical practice guidelines",
+      "pre_position": "DOH leptospirosis prophylaxis guidance",
+      "drain_clearing": "DOH environmental sanitation and rodent control guidance"
+    }
+  },
+  "spots": {
+    "min_depth": "knee",
+    "geohash_precision": 7,
+    "min_dates": 3,
+    "window_days": 365,
+    "seed_min_hazard_pct": 1
+  }
+}

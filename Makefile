@@ -27,5 +27,6 @@ web:
 
 test:
 	cd pipeline && uv run pytest
+	cd web && npm test
 
 all: setup data train evaluate replay
