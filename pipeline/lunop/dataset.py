@@ -11,7 +11,7 @@ from urllib.request import urlretrieve
 import numpy as np
 import pandas as pd
 
-from lunop.config import CLIM_START_YEAR, INTERIM, LEVEL_WEEKS, PIPELINE, PROCESSED, RAW, TRAIN_END_YEAR
+from lunop.config import CLIM_START_YEAR, EVENT_QUANTILE, EVENT_WINDOW, INTERIM, LEVEL_WEEKS, PIPELINE, PROCESSED, RAW, TRAIN_END_YEAR
 
 CHECKSUMS = PIPELINE / "raw.sha256"  # sha256sum format; pins the exact HDX snapshot
 
@@ -177,6 +177,21 @@ def check_panel(d: pd.DataFrame, cases: pd.DataFrame) -> None:
     check(pidsr.rain.isna().sum() <= pidsr.city.nunique(), "panel: rain missing beyond the final partial week")
 
 
+def events(d: pd.DataFrame) -> pd.DataFrame:
+    """Each city's top-(1 - EVENT_QUANTILE) rain weeks within the PIDSR period, with LOEO windows.
+
+    Adjacent heavy weeks stay separate events, so their windows can overlap.
+    """
+    d = d[d.date >= d.date[d.cases.notna()].min()].dropna(subset=["rain"])
+    e = d[d.rain >= d.groupby("city").rain.transform("quantile", EVENT_QUANTILE)]
+    e = e[["city", "date", "rain", "rain_clim"]].sort_values(["city", "date"]).reset_index(drop=True)
+    lo, hi = EVENT_WINDOW
+    e["window_start"] = e.date + pd.Timedelta(weeks=lo)
+    e["window_end"] = e.date + pd.Timedelta(weeks=hi)
+    e.insert(0, "event_id", e.city.str.replace(" ", "_").str.lower() + "_" + e.date.dt.strftime("%Y-%m-%d"))
+    return e
+
+
 def build() -> None:
     """Raw CCHAIN -> data/processed/ and web/public/data/barangays.geojson.
 
@@ -191,6 +206,7 @@ def build() -> None:
     d = panel(cases, city_daily_rain(loc))
     check_panel(d, cases)
     save(d, PROCESSED / "panel.parquet")
+    save(events(d), PROCESSED / "events.parquet")
 
 
 def main() -> None:

@@ -51,6 +51,17 @@ def test_check_panel_catches_gap():
         dataset.check_panel(d, cases)
 
 
+def test_events_are_top_rain_weeks_with_windows():
+    cases = weekly_cases("2010-01-04", 100)
+    rain = daily("2010-01-04", "2011-12-04")
+    rain["rain"] = np.linspace(0, 1, len(rain))
+    for week in ["2010-06-07", "2011-03-07"]:  # 2 of 100 weeks are wet
+        rain.loc[rain.date.between(week, pd.Timestamp(week) + pd.Timedelta(days=6)), "rain"] = 50
+    e = dataset.events(dataset.panel(cases, rain))
+    assert e.date.tolist() == [pd.Timestamp("2010-06-07"), pd.Timestamp("2011-03-07")]
+    assert (e.window_end - e.window_start).iloc[0] == pd.Timedelta(weeks=10)
+
+
 built = pytest.mark.skipif(not (PROCESSED / "panel.parquet").exists(), reason="run `make data` first")
 
 
@@ -60,3 +71,10 @@ def test_built_panel():
     assert d.city.nunique() == 12
     assert d.groupby("city").size().nunique() == 1
     assert d.cases.dropna().ge(0).all() and d.rain.dropna().ge(0).all()
+
+
+@built
+def test_built_events():
+    e = pd.read_parquet(PROCESSED / "events.parquet")
+    assert e.event_id.is_unique
+    assert (e.city == "Iloilo City").sum() == 16  # TRD 5.4
