@@ -1,2 +1,3 @@
-# pjdsc-26
-PJDSC 2026
+# Project LUNOP
+
+**L**eptospirosis **U**psurge **N**owcasting & **O**utbreak **P**revention
