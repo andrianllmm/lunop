@@ -1,11 +1,14 @@
 """Fetch CCHAIN tables from HDX into data/raw/, then build model-ready tables.
 
-Usage: python -m lunop.dataset [download|build]   (default: both)
+Usage: python -m lunop.dataset [download|verify|build]   (default: all, in order)
 """
+import hashlib
 import sys
 from urllib.request import urlretrieve
 
-from lunop.config import RAW
+from lunop.config import PIPELINE, RAW
+
+CHECKSUMS = PIPELINE / "raw.sha256"  # sha256sum format; pins the exact HDX snapshot
 
 BASE = "https://data.humdata.org/dataset/5b580664-365e-4d7e-b5e5-2990df8f12a5/resource"
 TABLES = {
@@ -30,7 +33,25 @@ def download() -> None:
         if out.exists():
             continue
         print(f"downloading {name}")
-        urlretrieve(f"{BASE}/{rid}/download/{name}.csv", out)
+        tmp = out.with_suffix(".part")
+        urlretrieve(f"{BASE}/{rid}/download/{name}.csv", tmp)
+        tmp.rename(out)  # an interrupted download never leaves a truncated CSV
+
+
+def sha256(path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def verify() -> None:
+    """Fail if any raw table differs from the pinned snapshot (HDX can republish in place)."""
+    expected = dict(line.split()[::-1] for line in CHECKSUMS.read_text().splitlines())
+    bad = [name for name, digest in expected.items() if sha256(RAW / name) != digest]
+    if bad:
+        raise SystemExit(f"checksum mismatch: {', '.join(bad)}; delete and re-download, or update {CHECKSUMS.name}")
 
 
 def build() -> None:
@@ -46,7 +67,7 @@ def build() -> None:
 
 
 def main() -> None:
-    steps = {"download": download, "build": build}
+    steps = {"download": download, "verify": verify, "build": build}
     for name in sys.argv[1:] or steps:
         steps[name]()
 
