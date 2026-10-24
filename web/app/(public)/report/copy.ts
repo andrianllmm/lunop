@@ -1,10 +1,10 @@
 import type { Depth } from "@/lib/types"
 
-export type Lang = "en" | "fil"
-
 /** Report page text. The Filipino is a draft; have a fluent speaker review it. */
 export const copy = {
   en: {
+    title: "Report flooding",
+    desc: "Tell us where it flooded and how deep.",
     form: "Flood report",
     formDesc: "Takes under 30 seconds. No name or photo needed.",
     location: "Location",
@@ -37,6 +37,8 @@ export const copy = {
     wadedTag: "waded",
   },
   fil: {
+    title: "Mag-ulat ng baha",
+    desc: "Sabihin kung saan bumaha at gaano kalalim.",
     form: "Ulat ng baha",
     formDesc: "Wala pang 30 segundo. Hindi kailangan ng pangalan o litrato.",
     location: "Lokasyon",

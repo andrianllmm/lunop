@@ -4,8 +4,10 @@ import * as React from "react"
 import { LocateFixedIcon } from "lucide-react"
 import { toast } from "sonner"
 
-import { copy, type Lang } from "@/app/(dashboard)/report/copy"
-import { DepthSlider } from "@/app/(dashboard)/report/depth-slider"
+import { useLang } from "@/app/(public)/lang"
+import { copy } from "@/app/(public)/report/copy"
+import { DepthSlider } from "@/app/(public)/report/depth-slider"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
@@ -14,20 +16,16 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useOutbox } from "@/hooks/use-outbox"
 import { useReports } from "@/hooks/use-reports"
 import { locate, type Barangays } from "@/lib/locate"
 import { enqueue, pending } from "@/lib/outbox"
 import type { Depth } from "@/lib/types"
 
-/** The default "on" style is a faint gray; make the picked option obvious. */
-const SELECTED = "data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-
 type GpsState ={ status: "idle" | "locating" | "outside" | "failed" } | { status: "found"; lat: number; lon: number }
 
 export function ReportForm() {
-  const [lang, setLang] = React.useState<Lang>("en")
+  const { lang } = useLang()
   const t = copy[lang]
 
   const [barangays, setBarangays] = React.useState<Barangays | null>(null)
@@ -119,21 +117,7 @@ export function ReportForm() {
 
   return (
     <>
-      <ToggleGroup
-        type="single"
-        variant="outline"
-        size="sm"
-        value={lang}
-        onValueChange={(v) => v && setLang(v as Lang)}
-        className="self-end"
-      >
-        <ToggleGroupItem value="en" className={SELECTED}>
-          English
-        </ToggleGroupItem>
-        <ToggleGroupItem value="fil" className={SELECTED}>
-          Filipino
-        </ToggleGroupItem>
-      </ToggleGroup>
+      <PageHeader title={t.title} description={t.desc} />
 
       <Card>
         <CardHeader>

@@ -88,7 +88,13 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 
 ## 6. Features
 
-The app is a dashboard with a sidebar: **Overview, Replay, Priority areas, Report, Methods & Validation**. It has seven features. Each one is built to be polished rather than broad.
+The app has two parts, both open with no login (it holds no personal data, and judges need open access):
+
+- **Officer dashboard** with a sidebar: **Overview, Replay, Priority areas, Methods & Validation**.
+- **Landing page** (`/`) that leads to the Report page or the dashboard.
+- **Public Report page** for residents and BHWs: a minimal header with an EN/FIL switch, no sidebar, and no priority scores or dose ranges.
+
+It has seven features. Each one is built to be polished rather than broad.
 
 ### F1. Surge forecast (Overview)
 - Expected weekly cases for weeks +1 to +4 with an 80% interval, against the seasonal baseline.
