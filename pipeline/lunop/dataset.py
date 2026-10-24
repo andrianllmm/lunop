@@ -8,12 +8,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from urllib.request import urlretrieve
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
+import shapely
 
 from lunop.config import (
-    CLIM_START_YEAR, EVENT_QUANTILE, EVENT_WINDOW, INTERIM, LEVEL_WEEKS, PIPELINE, PROCESSED, RAW, TRAIN_END_YEAR,
-    ZAMBOANGA, ZAMBOANGA_BRGY_SOURCE,
+    CLIM_START_YEAR, EVENT_QUANTILE, EVENT_WINDOW, ILOILO_PSGC, INTERIM, LEVEL_WEEKS, PIPELINE, PROCESSED, RAW,
+    TRAIN_END_YEAR, WEB_DATA, ZAMBOANGA, ZAMBOANGA_BRGY_SOURCE,
 )
 
 CHECKSUMS = PIPELINE / "raw.sha256"  # sha256sum format; pins the exact HDX snapshot
@@ -231,6 +233,56 @@ def zamboanga_brgy(loc: pd.DataFrame) -> pd.DataFrame:
     return b.rename_axis("psgc").reset_index().sort_values("psgc", ignore_index=True)
 
 
+SIMPLIFY_DEG = 1e-4  # ~11 m; keeps the precached GeoJSON small
+WATER = ["osm_river_nearest", "osm_stream_nearest", "osm_canal_nearest", "osm_drain_nearest"]
+ISOCHRONE_MIN = (5, 15, 30)
+
+
+def travel_min(iso: pd.DataFrame) -> pd.Series:
+    """Smallest isochrone (minutes) within which half the barangay reaches a hospital; NaN if > 30."""
+    reached = pd.concat({m: iso[f"hospital_pop_reached_pct_{m}min"] >= 50 for m in ISOCHRONE_MIN}, axis=1)
+    return reached.idxmax(axis=1).where(reached.any(axis=1))
+
+
+def barangays(loc: pd.DataFrame, city_psgc: str = ILOILO_PSGC) -> gpd.GeoDataFrame:
+    """One city's barangay polygons with the static attributes the web app shows.
+
+    - pop: WorldPop 2020 (the latest year)
+    - hazard_pct: NOAH 25-yr medium + high flood hazard, % of area
+    - access30_pct: % of population within 30 min of a hospital (Mapbox isochrones)
+    - hospital_dist_m: distance to the nearest DOH hospital; travel_min: see travel_min()
+    - water_dist_m: distance to the nearest river, stream, canal or drain (OSM, latest year)
+    - bldg_density: buildings per km2 (Google Open Buildings)
+    Distances are capped at 10 km by CCHAIN.
+    """
+    b = loc[loc.city_psgc == city_psgc].set_index("psgc")[["name", "area_km2"]]
+    geo = read_raw("brgy_geography").set_index("adm4_pcode").geometry
+    iso = read_raw("mapbox_health_facility_brgy_isochrones").set_index("adm4_pcode")
+    doh = read_raw("geoportal_doh_poi_health").set_index("adm4_pcode")
+    osm = read_raw("osm_poi_water_body", parse_dates=["date"])
+    osm = osm[osm.date == osm.date.max()].set_index("adm4_pcode")
+    bldg = read_raw("google_open_buildings").set_index("adm4_pcode")
+    b = b.join(population(2020, 2020).round().astype("Int64")).join(hazard().hazard_pct)
+    b["access30_pct"] = iso.hospital_pop_reached_pct_30min
+    b["travel_min"] = travel_min(iso).astype("Int64")
+    b["hospital_dist_m"] = doh.doh_hospital_nearest
+    b["water_dist_m"] = osm[WATER].min(axis=1)
+    b["bldg_density"] = bldg.google_bldgs_density * 1e6
+    cols = ["hazard_pct", "access30_pct", "hospital_dist_m", "water_dist_m", "bldg_density"]
+    check(b.drop(columns="travel_min").notna().all().all(), "barangays: missing attribute")
+    b[cols] = b[cols].round(1)
+    geom = shapely.make_valid(shapely.from_wkt(geo.reindex(b.index)))
+    g = gpd.GeoDataFrame(b, geometry=shapely.simplify(geom, SIMPLIFY_DEG, preserve_topology=True), crs="EPSG:4326")
+    check(g.geometry.notna().all() and g.is_valid.all() and not g.is_empty.any(), "barangays: bad geometry")
+    return g.rename_axis("psgc").reset_index().sort_values("psgc", ignore_index=True)
+
+
+def save_geojson(g: gpd.GeoDataFrame, path: Path) -> None:
+    with atomic(path) as tmp:
+        g.to_file(tmp, driver="GeoJSON", layer=path.stem, COORDINATE_PRECISION=5, RFC7946="YES")
+    print(f"wrote {path.relative_to(path.parents[3])} ({len(g)} features, {path.stat().st_size / 1e3:.0f} kB)")
+
+
 def build() -> None:
     """Raw CCHAIN -> data/processed/ and web/public/data/barangays.geojson.
 
@@ -247,6 +299,7 @@ def build() -> None:
     save(d, PROCESSED / "panel.parquet")
     save(events(d), PROCESSED / "events.parquet")
     save(zamboanga_brgy(loc), PROCESSED / "zamboanga_brgy.parquet")
+    save_geojson(barangays(loc), WEB_DATA / "barangays.geojson")
 
 
 def main() -> None:

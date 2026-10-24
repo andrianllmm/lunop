@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from lunop import dataset
-from lunop.config import LEVEL_WEEKS, PROCESSED
+from lunop.config import LEVEL_WEEKS, PROCESSED, WEB_DATA
 
 
 def daily(start: str, end: str, city: str = "A", mm: float = 1.0) -> pd.DataFrame:
@@ -62,6 +62,16 @@ def test_events_are_top_rain_weeks_with_windows():
     assert (e.window_end - e.window_start).iloc[0] == pd.Timedelta(weeks=10)
 
 
+def test_travel_min_is_first_isochrone_reaching_half():
+    iso = pd.DataFrame({
+        "hospital_pop_reached_pct_5min": [60, 10, 0],
+        "hospital_pop_reached_pct_15min": [90, 55, 10],
+        "hospital_pop_reached_pct_30min": [100, 80, 40],
+    })
+    assert dataset.travel_min(iso).tolist()[:2] == [5, 15]
+    assert np.isnan(dataset.travel_min(iso).iloc[2])
+
+
 built = pytest.mark.skipif(not (PROCESSED / "panel.parquet").exists(), reason="run `make data` first")
 
 
@@ -86,3 +96,12 @@ def test_built_zamboanga_brgy():
     assert len(b) == 101 and b.psgc.is_unique
     assert b.cases.sum() == 328  # FINDINGS.md
     assert b.hazard_pct.between(0, 100).all()
+
+
+@pytest.mark.skipif(not (WEB_DATA / "barangays.geojson").exists(), reason="run `make data` first")
+def test_built_barangays_geojson():
+    import geopandas as gpd
+
+    g = gpd.read_file(WEB_DATA / "barangays.geojson")
+    assert len(g) == 180 and g.psgc.str.startswith("PH063022").all()  # Iloilo City
+    assert g.is_valid.all() and g["pop"].gt(0).all()
