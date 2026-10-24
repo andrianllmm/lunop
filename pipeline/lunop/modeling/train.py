@@ -6,7 +6,7 @@ import pandas as pd
 import statsmodels.api as sm
 from scipy import optimize, stats
 
-from lunop.config import HORIZONS, MODELS, PROCESSED, TRAIN_START_YEAR
+from lunop.config import HORIZONS, ILOILO, MODELS, PROCESSED, TRAIN_START_YEAR
 from lunop.dataset import atomic
 from lunop.features import design, features
 
@@ -98,6 +98,8 @@ def main() -> None:
         "data_end": panel.date[panel.cases.notna()].max().date().isoformat(),
         "rain_scale": check["scale"],  # multiply live Open-Meteo rain by this (TRD 5.5)
         "p95": p95(panel, TRAIN_START_YEAR),
+        # Iloilo's normal weekly rain by woy (1-52), for forecast weeks past the rain forecast
+        "rain_clim": panel[panel.city == ILOILO].groupby("woy").rain_clim.first().round(1).tolist(),
         "models": {v: {str(h): m for h, m in hs.items()} for v, hs in models.items()},
     }
     with atomic(MODELS / "model.json") as tmp:
