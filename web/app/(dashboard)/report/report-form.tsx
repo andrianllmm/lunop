@@ -15,8 +15,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useOutbox } from "@/hooks/use-outbox"
 import { useReports } from "@/hooks/use-reports"
 import { locate, type Barangays } from "@/lib/locate"
+import { enqueue, pending } from "@/lib/outbox"
 import type { Depth } from "@/lib/types"
 
 /** The default "on" style is a faint gray; make the picked option obvious. */
@@ -37,6 +39,7 @@ export function ReportForm() {
   const [website, setWebsite] = React.useState("")
   const [sending, setSending] = React.useState(false)
   const { reports, refresh } = useReports()
+  const outbox = useOutbox()
 
   React.useEffect(() => {
     fetch("/data/barangays.geojson")
@@ -75,34 +78,36 @@ export function ReportForm() {
     if (!psgc) return toast.error(t.missingLocation)
     if (!depth) return toast.error(t.missingDepth)
     if (!waded) return toast.error(t.missingWaded)
-    if (!navigator.onLine) return toast.error(t.offline)
 
     setSending(true)
     try {
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          client_id: crypto.randomUUID(),
-          observed_at: new Date().toISOString(),
-          lat: gps.status === "found" ? gps.lat : null,
-          lon: gps.status === "found" ? gps.lon : null,
-          psgc,
-          depth,
-          duration_h: duration === "" ? null : Number(duration),
-          waded: waded === "yes",
-          website,
-        }),
+      // Saved on the device first, so it survives no signal (TRD §10.1).
+      const client_id = crypto.randomUUID()
+      await enqueue({
+        client_id,
+        observed_at: new Date().toISOString(),
+        lat: gps.status === "found" ? gps.lat : null,
+        lon: gps.status === "found" ? gps.lon : null,
+        psgc,
+        depth,
+        duration_h: duration === "" ? null : Number(duration),
+        waded: waded === "yes",
+        website,
       })
-      if (res.status === 429) return toast.error(t.tooMany)
-      if (!res.ok) return toast.error(t.failed)
-      toast.success(t.sent)
       setGps({ status: "idle" })
       setPsgc("")
       setDepth("")
       setDuration("")
       setWaded("")
-      refresh()
+
+      const result = await outbox.send()
+      const left = await pending()
+      if (left.some((r) => r.client_id === client_id)) toast.info(t.queued(left.length))
+      else if (result?.dropped) toast.error(t.failed)
+      else {
+        toast.success(t.sent)
+        refresh()
+      }
     } catch {
       toast.error(t.failed)
     } finally {
@@ -207,6 +212,7 @@ export function ReportForm() {
                 {sending && <Spinner />}
                 {sending ? t.sending : t.submit}
               </Button>
+              {outbox.pending > 0 && <FieldDescription>{t.queued(outbox.pending)}</FieldDescription>}
             </FieldGroup>
           </form>
         </CardContent>

@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar"
+import { OfflineBanner } from "@/components/offline-banner"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
@@ -8,7 +9,10 @@ export default function DashboardLayout({ children }: LayoutProps<"/">) {
       <AppSidebar />
       <SidebarInset>
         <SiteHeader />
-        <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">{children}</main>
+        <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+          <OfflineBanner />
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   )

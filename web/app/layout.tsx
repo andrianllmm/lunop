@@ -1,4 +1,5 @@
-import type { Metadata } from "next"
+import { SerwistProvider } from "@serwist/turbopack/react"
+import type { Metadata, Viewport } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 
 import { ThemeProvider } from "@/components/theme-provider"
@@ -23,7 +24,10 @@ export const metadata: Metadata = {
     template: "%s · LUNOP",
   },
   description: "Leptospirosis Upsurge Nowcasting & Outbreak Prevention",
+  appleWebApp: { capable: true, title: "LUNOP", statusBarStyle: "default" },
 }
+
+export const viewport: Viewport = { themeColor: "#3b82f6" }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -39,7 +43,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>{children}</TooltipProvider>
+          {/* No reload on reconnect: it would wipe a half-filled report form. */}
+          <SerwistProvider swUrl="/serwist/sw.js" disable={process.env.NODE_ENV === "development"} reloadOnOnline={false}>
+            <TooltipProvider>{children}</TooltipProvider>
+          </SerwistProvider>
           <Toaster />
         </ThemeProvider>
       </body>
