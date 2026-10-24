@@ -73,6 +73,16 @@
   --color-destructive-foreground: var(--destructive-foreground);
 }
 
+@theme {
+  --animate-wave: wave 3s linear infinite;
+
+  @keyframes wave {
+    to {
+      transform: translateX(60px);
+    }
+  }
+}
+
 :root {
   --background: oklch(1.0000 0 0);
   --foreground: oklch(0.3211 0 0);
