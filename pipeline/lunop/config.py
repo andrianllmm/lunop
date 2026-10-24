@@ -22,4 +22,6 @@ SEED = 42
 RAIN_LAGS = range(9)  # weeks 0..8
 HORIZONS = (1, 2, 3, 4)
 TRAIN_END_YEAR = 2017  # fit 2008-2017, validate 2018-2022
+CLIM_START_YEAR = 2003  # rain climatology uses 2003..TRAIN_END_YEAR, so it never sees validation years
+LEVEL_WEEKS = 52  # trailing window for level_c
 EVENT_QUANTILE = 0.98  # top-2% rain weeks per city
