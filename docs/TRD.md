@@ -48,7 +48,7 @@ decision engine runs on cached data when offline
 
 ```
 pjdsc-26/
-├── docs/                    PRD.md, TRD.md, FINDINGS.md
+├── docs/                    PRD.md, TRD.md, FINDINGS.md, DATA.md
 ├── eda/                     EDA notebooks (Jupytext .py + .ipynb), reports/ HTML; own uv project
 ├── pipeline/                uv project (Cookiecutter Data Science layout)
 │   ├── lunop/               package, one module per stage
@@ -99,10 +99,17 @@ A monorepo: `pipeline/` (Python) and `web/` (Next.js) are separate projects. `pi
 
 Iloilo City is PSGC `PH063022000`, with 180 barangays.
 
-**Calendar:** PIDSR weeks start Monday and use 52-week years, so the weeks of 2012-12-31 and 2018-01-01 are missing. `pipeline/lunop/dataset.py` reindexes each city to the full weekly calendar so a row shift is always a one-week lag. EDA and data checks: [FINDINGS.md](FINDINGS.md).
+**Calendar:** PIDSR weeks start Monday and use 52-week years, so the weeks of 2012-12-31 and 2018-01-01 are missing. `pipeline/lunop/dataset.py` reindexes each city to the full weekly calendar so a row shift is always a one-week lag. EDA and data checks: [FINDINGS.md](FINDINGS.md). Column definitions for every output: [DATA.md](DATA.md).
+
+**Build** (`make data` = `python -m lunop.dataset download verify build`):
+- `verify` checks every raw CSV against `pipeline/raw.sha256`, so a rebuild uses the same HDX snapshot. Rebuilds are byte-identical.
+- `build` checks each table's assumptions (unique keys, Monday weeks, no negative counts or rain, codes found in `location`) and stops with `DataError` if one fails.
+- Rain: barangay-day → city-day mean (cached in `interim/`) → Monday-week sum; a week with fewer than 7 days is NaN. One Zamboanga barangay has no rain and is skipped.
+- `panel.parquet` runs from 2003-01-06 so lags exist at 2008. `level_c` uses only weeks ≤ t. `rain_clim` uses 2003–2017 only, so it never sees validation years.
+- `events.parquet`: each city's top-2% rain weeks, 2008–2022 (16 for Iloilo), with `window_start/end` at −2/+8 weeks.
 
 **Static outputs** (committed to `web/public/data/`):
-- `barangays.geojson`: simplified polygons (~1e-4°) with `psgc, name, pop, hazard_pct, access30_pct, nearest_facility, travel_min, water_dist_m, bldg_density`.
+- `barangays.geojson`: simplified polygons (~1e-4°, 5 decimals) with `psgc, name, area_km2, pop` (WorldPop 2020), `hazard_pct` (NOAH 25-yr med + high), `access30_pct` (pop % within 30 min of a hospital), `travel_min` (first isochrone of 5/15/30 min reaching half the pop; null if > 30), `hospital_dist_m`, `water_dist_m` (nearest river, stream, canal or drain), `bldg_density` (per km²). CCHAIN caps distances at 10 km.
 - `config.json`: every weight and assumption used by the TypeScript functions, so the UI can display them.
 
 ## 5. Forecast model

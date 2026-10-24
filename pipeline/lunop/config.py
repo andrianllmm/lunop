@@ -17,9 +17,13 @@ WEB_DATA = ROOT / "web" / "public" / "data"  # static JSON served by the app
 ILOILO = "Iloilo City"
 ILOILO_PSGC = "PH063022000"
 ZAMBOANGA = "Zamboanga City"
+ZAMBOANGA_BRGY_SOURCE = "Zamboanga_PIDSR_2013-2022"  # the only usable barangay case file
 
 SEED = 42
 RAIN_LAGS = range(9)  # weeks 0..8
 HORIZONS = (1, 2, 3, 4)
 TRAIN_END_YEAR = 2017  # fit 2008-2017, validate 2018-2022
+CLIM_START_YEAR = 2003  # rain climatology uses 2003..TRAIN_END_YEAR, so it never sees validation years
+LEVEL_WEEKS = 52  # trailing window for level_c
 EVENT_QUANTILE = 0.98  # top-2% rain weeks per city
+EVENT_WINDOW = (-2, 8)  # weeks around an event held out in LOEO

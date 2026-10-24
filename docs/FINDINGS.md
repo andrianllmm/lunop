@@ -52,6 +52,7 @@ What the data says, what it means for LUNOP, and what's still open. Source: the 
 ## Open issues
 
 - ⚠️ **Iloilo 3-week forecast gets worse with rain (−10%).** Check forecast skill on post-storm weeks and test an Iloilo-specific rain term before relying on h = 3.
+- ⚠️ **Iloilo has almost no 25-yr hazard:** only 5 of 180 barangays have any medium/high area (max 14%), so `H_b` is ~0 and priority falls back to population. The 100-yr layer covers 132 barangays (medium). Choose a layer for Iloilo before tuning priority.
 - Iloilo has no barangay case data, so the ranking can't be validated where it's used.
 - PIDSR week definition (onset vs report) affects how the lag is read.
 - NOAH hazard predates recent flood control.
