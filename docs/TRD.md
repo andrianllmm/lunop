@@ -35,14 +35,14 @@ decision engine runs on cached data when offline
 | Layer | Choice |
 |---|---|
 | Offline model | Python 3.11, pandas, statsmodels, geopandas, managed with `uv` |
-| Web | Next.js (App Router), TypeScript, MapLibre GL, Recharts, Tailwind + shadcn/ui |
+| Web | Next.js (App Router), TypeScript, MapLibre GL via [mapcn](https://mapcn.dev) (MIT, shadcn registry), Recharts, Tailwind + shadcn/ui |
 | DB | Neon Postgres via the Vercel integration; `@neondatabase/serverless` with plain SQL |
 | Geometry in TS | `@turf/boolean-point-in-polygon` (GPS → barangay) |
 | PWA | Serwist (`@serwist/next`) service worker; `app/manifest.ts` |
 | Offline storage | IndexedDB via `idb-keyval` (report outbox) |
 | Daily job | GitHub Actions cron |
 | Deploy | Vercel (project root `web/`) |
-| Basemap | OpenFreeMap |
+| Basemap | OpenFreeMap `positron` (light) and `dark`: no API key, no usage limits. Not mapcn's default CARTO tiles, which have usage terms |
 
 ## 3. Repository layout
 
@@ -331,11 +331,13 @@ Sidebar dashboard, with every page usable on a phone.
 
 | What | Strategy | Notes |
 |---|---|---|
-| App shell (JS, CSS, fonts, page HTML, `~offline` page) | Precache at install | Every route opens offline |
+| App shell (JS, CSS, fonts, page HTML, `~offline` page, `maplibre-gl-worker.mjs`) | Precache at install | Every route opens offline |
 | `barangays.geojson`, `config.json`, `performance.json`, `replay/*.json` | Precache at install | Change only on deploy |
 | `forecast.json` | Network first, cache fallback | Daily file; offline shows the cached copy and its `issued` date |
 | `GET /api/reports` | Network first, cache fallback | Offline shows the last fetched reports |
-| Basemap tiles (OpenFreeMap) | Cache first; Iloilo bounding box at z11–15 pre-warmed after install | Capped by a tile count limit; other areas cache as viewed |
+| Basemap style, sprites, fonts and tiles (OpenFreeMap) | Cache first; Iloilo bounding box at z11–15 pre-warmed after install | Capped by a tile count limit; other areas cache as viewed |
+
+**Map offline.** MapLibre's worker is served from `public/` (copied from `node_modules` by `npm run worker` before `dev` and `build`), not from unpkg as mapcn does by default. Barangay polygons are our own GeoJSON layer, so they draw without basemap tiles; a page opened offline skips the basemap style entirely.
 
 **Report outbox (`lib/outbox.ts`)**
 - Every report gets `client_id` and `observed_at` on the device, then goes into an IndexedDB outbox before any network call.
