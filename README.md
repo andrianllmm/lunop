@@ -63,3 +63,103 @@ Together, these capabilities help teams decide **how many, where, and what to do
 - **Offline field access:** view saved information and queue reports when the device is offline.
 
 
+## Architecture
+
+```mermaid
+flowchart LR
+    HDX["Project CCHAIN<br/>(HDX, raw CSVs)"] -->|make data| PROC["data/processed/<br/>model-ready tables"]
+    PROC -->|"make train<br/>make evaluate<br/>make replay"| OUT["web/public/data/<br/>JSON + GeoJSON<br/>(committed)"]
+    OM["Open-Meteo<br/>rain forecast"] -->|"make live<br/>(daily GitHub Action)"| OUT
+    OSM["OpenStreetMap"] -->|make osm| OUT
+    OUT --> WEB["Next.js web app<br/>(installable, offline)"]
+    USERS["Residents and<br/>health workers"] -->|"POST /api/reports"| DB[("Postgres")]
+    DB --> WEB
+```
+
+- **`pipeline/`** (Python) does all modeling offline and writes static files to `web/public/data/`.
+- **`web/`** (Next.js) reads those files and runs the decision rules (priority, doses, countdowns, recommendations) in the browser, so it works offline.
+- The only live server parts are the daily forecast job and the flood-report API.
+
+## Quick start
+
+**Prerequisites:** [uv](https://docs.astral.sh/uv/) (installs Python 3.11), Node.js 20.9 or newer, and `make`. Postgres is optional (only for flood reports).
+
+```bash
+make setup   # install Python and Node dependencies
+make web     # run the app at http://localhost:3000
+```
+
+The model outputs are committed in `web/public/data/`, so the app runs without downloading any data. To rebuild everything from raw data:
+
+```bash
+make all     # setup, data, train, evaluate, replay
+make test    # pytest + vitest
+```
+
+**Flood reports (optional).** The report form and live reports need Postgres. For local development:
+
+```bash
+docker run --name lunop-db -e POSTGRES_DB=lunop -e POSTGRES_PASSWORD=<password> -p 5432:5432 -d postgres:16
+psql "postgres://postgres:<password>@localhost:5432/lunop" -f web/db/schema.sql
+```
+
+Then create `web/.env.local` with `DATABASE_URL` (the connection string above) and `IP_SALT` (any random string, used to hash reporter IPs).
+
+## Data
+
+| Source | Used for |
+|---|---|
+| [Project CCHAIN](https://data.humdata.org/dataset/project-cchain) (HDX) | Leptospirosis cases (PIDSR), rain, flood hazard (NOAH), population (WorldPop), boundaries, hospital access |
+| [Open-Meteo](https://open-meteo.com/) | Live rain forecast |
+| [OpenStreetMap](https://www.openstreetmap.org/) | Health facility and waterway map layers |
+| Community reports | Flood depth and wading, sent from the app |
+
+`make data` downloads the CCHAIN tables into `data/raw/`, checks each file against `pipeline/raw.sha256` so every rebuild uses the same snapshot, and builds the processed tables. `data/` is gitignored. Column definitions: [docs/DATA.md](docs/DATA.md).
+
+## Make targets
+
+| Target | What it does | Outputs |
+|---|---|---|
+| `make setup` | Install dependencies (`uv sync`, `npm install`) | `pipeline/.venv`, `web/node_modules` |
+| `make data` | Download, verify and build CCHAIN data | `data/raw/`, `data/processed/*.parquet`, `web/public/data/barangays.geojson` |
+| `make osm` | Fetch OpenStreetMap layers (one-time) | `web/public/data/facilities.geojson`, `waterways.geojson` |
+| `make train` | Compare rain sources, fit the models | `pipeline/models/rain_scale.json`, `model.json` |
+| `make evaluate` | Back-test, event study, leave-one-event-out, Zamboanga check | `web/public/data/performance.json`, `pipeline/models/thresholds.json`, `pipeline/reports/backtest.md` |
+| `make replay` | Build past-storm replays | `web/public/data/replay/*.json` |
+| `make live` | Today's forecast from Open-Meteo (also runs daily in GitHub Actions) | `web/public/data/forecast.json` |
+| `make web` | Run the app in development | http://localhost:3000 |
+| `make test` | Run all tests | |
+| `make all` | `setup`, `data`, `train`, `evaluate`, `replay` | |
+
+## Repository layout
+
+```
+pjdsc-26/
+├── pipeline/   Python: data, model, evaluation (uv project; lunop/ package, tests/, models/, reports/)
+├── web/        Next.js app (app/ routes, components/, lib/ decision rules, public/data/ model outputs)
+├── eda/        exploratory notebooks and HTML reports
+├── docs/       PRD, TRD, FINDINGS, DATA, REFERENCES
+├── data/       raw/, interim/, processed/, external/ (gitignored)
+└── Makefile
+```
+
+## Documentation
+
+- [PRD](docs/PRD.md): problem, users, features, future directions
+- [TRD](docs/TRD.md): architecture, data, model, decision rules, offline design
+- [FINDINGS](docs/FINDINGS.md): what the data shows, challenges and mitigation
+- [DATA](docs/DATA.md): column definitions for every output
+- [Back-test report](pipeline/reports/backtest.md): forecast accuracy against baselines
+- [REFERENCES](docs/REFERENCES.md): all sources, APA 7
+
+## Team
+
+Team Random Seed 42, [PJDSC 2026](https://pjdsc26-website.vercel.app/):
+
+- [@andrianllmm](https://github.com/andrianllmm)
+- [@Romyr05](https://github.com/Romyr05)
+- [@llaollao902](https://github.com/llaollao902)
+
+## License
+
+[MIT](LICENSE)
