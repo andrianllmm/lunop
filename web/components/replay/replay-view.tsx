@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Bar, BarChart, Cell, ReferenceLine, XAxis } from "recharts"
 
 import { BarangayMap, type BarangayCollection, type MapPoint } from "@/components/barangay-map"
-import { DecisionCard } from "@/components/replay/decision-card"
-import { ForecastChart } from "@/components/replay/forecast-chart"
+import { DecisionCard } from "@/components/decision-card"
+import { ForecastChart } from "@/components/forecast-chart"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
 import { config } from "@/lib/config"
+import { getJSON, type Performance } from "@/lib/data"
 import { fmtDate } from "@/lib/format"
 import { replayDay, type ReplayBundle, type ReplayEvent } from "@/lib/replay"
 import { DAY_MS } from "@/lib/time"
@@ -45,16 +46,6 @@ const DEPTH_R: Record<Depth, number> = { ankle: 3, knee: 4, waist: 5, chest: 6 }
 const OUTCOME: Record<ReplayEvent["outcome"], string> = { hit: "Hit", miss: "Miss", false_alarm: "False alarm" }
 
 const rainConfig = { rain: { label: "City rain (mm)", color: "var(--chart-2)" } } satisfies ChartConfig
-
-type Performance = {
-  loeo: { summary: { events: number; alerts_with_cases: { surges: number; hit_rate_high: number; false_alarm_high: number } } }
-}
-
-async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`${path}: ${res.status}`)
-  return res.json()
-}
 
 export function ReplayView() {
   const [events, setEvents] = useState<ReplayEvent[] | null>(null)
@@ -280,7 +271,7 @@ export function ReplayView() {
           </CardContent>
         </Card>
 
-        <DecisionCard day={day} />
+        <DecisionCard state={day} />
 
         <Card className="lg:col-span-3">
           <CardHeader>
@@ -290,7 +281,7 @@ export function ReplayView() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ForecastChart bundle={bundle} bulletin={day.bulletin} />
+            <ForecastChart bulletin={day.bulletin} actual={bundle.actual} />
           </CardContent>
         </Card>
       </div>

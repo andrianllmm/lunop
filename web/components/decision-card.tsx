@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { fmtDate, fmtInstant, fmtRange } from "@/lib/format"
 import type { Recommendation, RecommendationId } from "@/lib/recommend"
-import type { ReplayDay } from "@/lib/replay"
+import type { EngineState } from "@/lib/state"
 import { HOUR_MS } from "@/lib/time"
 import type { Level } from "@/lib/types"
 
@@ -56,9 +56,9 @@ function summary(r: Recommendation, countdowns: number) {
   return parts.join(" · ")
 }
 
-function Action({ r, day }: { r: Recommendation; day: ReplayDay }) {
+function Action({ r, state }: { r: Recommendation; state: EngineState }) {
   const Icon = ICON[r.id]
-  const left = r.deadline ? timeLeft(r.deadline, day.now) : null
+  const left = r.deadline ? timeLeft(r.deadline, state.now) : null
 
   return (
     <details className="group rounded-md border">
@@ -66,7 +66,7 @@ function Action({ r, day }: { r: Recommendation; day: ReplayDay }) {
         <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="font-medium">{r.action}</span>
-          <span className="text-muted-foreground tabular-nums">{summary(r, day.countdowns.size)}</span>
+          <span className="text-muted-foreground tabular-nums">{summary(r, state.countdowns.size)}</span>
         </div>
         {left && (
           <Badge variant={left.h < URGENT_H ? "destructive" : "outline"} className="shrink-0 tabular-nums">
@@ -121,8 +121,8 @@ function Action({ r, day }: { r: Recommendation; day: ReplayDay }) {
   )
 }
 
-export function DecisionCard({ day, className }: { day: ReplayDay; className?: string }) {
-  const { bulletin, recommendations } = day
+export function DecisionCard({ state, className }: { state: EngineState; className?: string }) {
+  const { bulletin, recommendations } = state
 
   return (
     <Card className={className}>
@@ -135,7 +135,7 @@ export function DecisionCard({ day, className }: { day: ReplayDay; className?: s
         {recommendations.length === 0 ? (
           <p className="text-muted-foreground">No action needed today.</p>
         ) : (
-          recommendations.map((r) => <Action key={r.id} r={r} day={day} />)
+          recommendations.map((r) => <Action key={r.id} r={r} state={state} />)
         )}
 
         <details className="group mt-2 text-muted-foreground">
