@@ -233,7 +233,8 @@ There is no poverty term, because its association flips sign between cities.
 ### 6.2 Doses (planning range)
 
 ```
-exposed_b = pop_b · H_b/100 · f_contact,   f_contact ∈ [0.1, 0.3]
+exposed_b = pop_b · D_b/100 · f_contact,   f_contact ∈ [0.1, 0.3]
+D_b       = pct_area_flood_100yr_high (deep water; H_b would put 42% of the city in a flood area)
 doses_b   = exposed_b · courses_per_person (default 1)     → shown as a range
 ```
 

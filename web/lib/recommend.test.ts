@@ -11,7 +11,7 @@ import type { Level } from "@/lib/types"
 const now = new Date("2026-10-24T12:00:00+08:00")
 const barangays = [
   ...Array.from({ length: 12 }, (_, i) =>
-    barangay(`H${String(i).padStart(2, "0")}`, { pop: 1000 + i * 100, hazard_pct: 10, access30_pct: i === 10 ? 20 : 100 }),
+    barangay(`H${String(i).padStart(2, "0")}`, { pop: 1000 + i * 100, hazard_pct: 10, hazard_high_pct: 10, access30_pct: i === 10 ? 20 : 100 }),
   ),
   barangay("Z", { hazard_pct: 0 }),
 ]

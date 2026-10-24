@@ -92,7 +92,7 @@ export function rankBarangays(
         priority,
         rank: 0,
         excess: total > 0 ? (excess * weight) / total : 0,
-        ...doseRange(b.pop, b.hazard_pct, cfg),
+        ...doseRange(b.pop, b.hazard_high_pct, cfg),
         access30_pct: b.access30_pct,
         access_flag:
           weight > 0 && priority >= access_top_pct && b.access30_pct !== null && b.access30_pct < access_max_pct,

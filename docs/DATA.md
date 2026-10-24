@@ -81,7 +81,8 @@ Iloilo City (`PH063022000`) polygons in EPSG:4326. Simplified at 1e-4° (~11 m) 
 | `name` | str | | | `location` |
 | `area_km2` | float | km² | | `location` |
 | `pop` | int | people | 2020 population | `worldpop_population` |
-| `hazard_pct` | float | % of area | 100-yr flood hazard, any level (160 of 180 barangays > 0) | `project_noah_hazards` |
+| `hazard_pct` | float | % of area | 100-yr flood hazard, any level (160 of 180 barangays > 0); ranks barangays | `project_noah_hazards` |
+| `hazard_high_pct` | float | % of area | 100-yr high flood hazard (deep water); sizes exposure and doses | same |
 | `access30_pct` | float | % of pop | share of people within 30 min of a hospital | `mapbox_health_facility_brgy_isochrones` |
 | `travel_min` | int \| null | min | first of 5 / 15 / 30 min within which ≥ 50% of people reach a hospital; null if none (10 barangays) | same |
 | `hospital_dist_m` | float | m | distance to the nearest DOH hospital | `geoportal_doh_poi_health` |
