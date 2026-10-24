@@ -1,6 +1,6 @@
 "use client"
 
-import { CloudRainIcon, WifiOffIcon } from "lucide-react"
+import { CloudRainIcon, HistoryIcon } from "lucide-react"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useOnline } from "@/hooks/use-online"
 import { config } from "@/lib/config"
 import { getJSON } from "@/lib/data"
 import { fmtDate, fmtRange } from "@/lib/format"
@@ -29,7 +30,7 @@ export function OverviewView() {
   const [forecast, setForecast] = useState<Forecast | null>(null)
   const [geo, setGeo] = useState<BarangayCollection | null>(null)
   const [now, setNow] = useState<Date | null>(null)
-  const [offline, setOffline] = useState(false)
+  const online = useOnline()
   const [hover, setHover] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,7 +43,6 @@ export function OverviewView() {
         setForecast(f)
         setGeo(g)
         setNow(new Date())
-        setOffline(!navigator.onLine)
       })
       .catch((e: Error) => setError(e.message))
   }, [])
@@ -67,13 +67,11 @@ export function OverviewView() {
 
   return (
     <div className="flex flex-col gap-6">
-      {(offline || age > STALE_DAYS) && (
+      {/* Offline, the layout's banner already shows the data date. */}
+      {online && age > STALE_DAYS && (
         <Alert variant="destructive">
-          <WifiOffIcon />
-          <AlertTitle>
-            {offline ? "You are offline." : "Not updated recently."} Showing data from{" "}
-            {fmtDate(forecast.issued, { year: "numeric" })}.
-          </AlertTitle>
+          <HistoryIcon />
+          <AlertTitle>Not updated recently. Showing data from {fmtDate(forecast.issued, { year: "numeric" })}.</AlertTitle>
         </Alert>
       )}
 
@@ -101,7 +99,7 @@ export function OverviewView() {
           </CardContent>
         </Card>
 
-        <DecisionCard state={state} />
+        <DecisionCard state={state} offline={!online} />
 
         <Card className="lg:col-span-3">
           <CardHeader>

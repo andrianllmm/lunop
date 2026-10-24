@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { reportFetch } from "@/hooks/use-online"
 import type { ReportFeature } from "@/lib/reports"
 import type { FloodReport } from "@/lib/types"
 
@@ -12,19 +13,25 @@ async function fetchReports(since?: string): Promise<FloodReport[]> {
   return fc.features.map((f) => f.properties)
 }
 
-/** Community reports from `GET /api/reports`, refetched every 60 s while online (TRD §7). */
+/**
+ * Community reports from `GET /api/reports`, refetched every 60 s (TRD §7).
+ * Offline, the service worker answers with the last fetched copy.
+ */
 export function useReports(since?: string) {
   const [reports, setReports] = React.useState<FloodReport[] | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
   const refresh = React.useCallback(() => {
-    if (!navigator.onLine) return
     fetchReports(since).then(
       (rs) => {
         setReports(rs)
         setError(null)
+        reportFetch(true)
       },
-      (e) => setError(e instanceof Error ? e.message : String(e)),
+      (e) => {
+        setError(e instanceof Error ? e.message : String(e))
+        if (e instanceof TypeError) reportFetch(false)
+      },
     )
   }, [since])
 

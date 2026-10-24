@@ -121,7 +121,16 @@ function Action({ r, state }: { r: Recommendation; state: EngineState }) {
   )
 }
 
-export function DecisionCard({ state, className }: { state: EngineState; className?: string }) {
+export function DecisionCard({
+  state,
+  offline,
+  className,
+}: {
+  state: EngineState
+  /** Computed on the device from saved data; labelled so it isn't read as current. */
+  offline?: boolean
+  className?: string
+}) {
   const { bulletin, recommendations } = state
 
   return (
@@ -132,6 +141,7 @@ export function DecisionCard({ state, className }: { state: EngineState; classNa
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 text-sm">
+        {offline && <p className="text-muted-foreground">Offline. Based on saved data and reports.</p>}
         {recommendations.length === 0 ? (
           <p className="text-muted-foreground">No action needed today.</p>
         ) : (
