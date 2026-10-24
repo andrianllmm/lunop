@@ -1,0 +1,46 @@
+{
+ "issued": "2026-10-24",
+ "data_as_of": "2026-10-23",
+ "variant": "rain_only",
+ "level": "Elevated",
+ "ratio": 1.86,
+ "rain_peak_date": "2026-10-14",
+ "weeks": [
+  {
+   "week_start": "2026-10-19",
+   "expected": 5.4,
+   "lo": 0,
+   "hi": 14,
+   "baseline": 4.1,
+   "ratio": 1.34
+  },
+  {
+   "week_start": "2026-10-26",
+   "expected": 6.6,
+   "lo": 0,
+   "hi": 17,
+   "baseline": 3.8,
+   "ratio": 1.72
+  },
+  {
+   "week_start": "2026-11-02",
+   "expected": 6.7,
+   "lo": 0,
+   "hi": 17,
+   "baseline": 3.6,
+   "ratio": 1.86
+  },
+  {
+   "week_start": "2026-11-09",
+   "expected": 5.7,
+   "lo": 0,
+   "hi": 15,
+   "baseline": 3.4,
+   "ratio": 1.66
+  }
+ ],
+ "drivers": [
+  "Rain in the week of Oct 5 was 1.6\u00d7 normal (112 mm)",
+  "Rain in the week of Oct 12 was 2.3\u00d7 normal (125 mm)"
+ ]
+}
