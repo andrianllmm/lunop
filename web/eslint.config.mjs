@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored from the mapcn registry; trips React Compiler rules upstream.
+    "components/ui/map.tsx",
+    "public/maplibre-gl-worker.mjs",
   ]),
 ]);
 
