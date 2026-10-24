@@ -147,9 +147,11 @@ export function ReportsView() {
                       className={cn("shrink-0 rounded-full", pinClass(roles.get(r.client_id), false))}
                       style={{ width: DEPTH_R[r.depth] * 2, height: DEPTH_R[r.depth] * 2 }}
                     />
-                    <span className="min-w-0 flex-1 truncate">{names.get(r.psgc) ?? r.psgc}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {DEPTH_LABEL[r.depth]} · {fmtInstant(r.observed_at)}
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="break-words">{names.get(r.psgc) ?? r.psgc}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {DEPTH_LABEL[r.depth]} · {fmtInstant(r.observed_at)}
+                      </span>
                     </span>
                   </button>
                 </li>
