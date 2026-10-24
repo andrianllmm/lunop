@@ -67,7 +67,7 @@ pjdsc-26/
 │   ├── reports/             backtest.md, figures
 │   └── pyproject.toml
 ├── web/
-│   ├── app/                 (dashboard)/{page, replay, priority, report, methods}
+│   ├── app/                 (dashboard)/{dashboard, replay, priority, methods}, (public)/{page, report}
 │   ├── app/api/reports/     route.ts (GET, POST)
 │   ├── app/                 manifest.ts, sw.ts (service worker), ~offline/ fallback page
 │   ├── lib/                 priority.ts, recommend.ts, spots.ts, db.ts,
@@ -310,14 +310,18 @@ create index on flood_reports (psgc, observed_at);
 
 ## 10. Frontend
 
-Sidebar dashboard, with every page usable on a phone.
+Two route groups, with every page usable on a phone:
+
+- `(dashboard)`: sidebar layout for officers.
+- `(public)`: minimal header (logo, EN/FIL, theme), no sidebar, for residents. Shares the offline banner and report outbox.
 
 | Route | Content |
 |---|---|
-| `/` Overview | Alert banner and data date; surge chart (expected, 80% band, baseline); priority map; **one decision card** (current-phase recommendation); past performance |
+| `/` (public) | Landing page: short intro, links to Report and the dashboard, EN/FIL |
+| `/dashboard` Overview | Alert banner and data date; surge chart (expected, 80% band, baseline); priority map; **one decision card** (current-phase recommendation); past performance |
 | `/replay` | Event picker (3 events); daily rain animation on the map; forecast vs actual chart; decision card evolving by day; simulated reports labelled |
 | `/priority` Priority areas | Ranked table (priority, pop, hazard, reports, dose range, access flag); detail panel; **Chronic flood spots** tab |
-| `/report` | Mobile-first form in English and Filipino, using GPS with a barangay dropdown fallback |
+| `/report` (public) | Mobile-first form in English and Filipino, using GPS with a barangay dropdown fallback |
 | `/methods` | Event study, LOEO table, back-test vs baselines, rain check, Zamboanga ρ with CI, dropped features and why, limitations |
 
 - Every number has a tooltip showing its source and date. Every weight is labelled as an assumption.

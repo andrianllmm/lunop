@@ -29,7 +29,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/" onClick={() => setOpenMobile(false)}>
+              <Link href="/dashboard" onClick={() => setOpenMobile(false)}>
                 <Logo className="size-8!" />
                 <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold">LUNOP</span>

@@ -9,7 +9,7 @@ const revision =
   spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).stdout?.trim() || crypto.randomUUID()
 
 /** Pages precached as HTML, so every route opens offline. */
-const PAGES = ["/", "/priority", "/replay", "/methods", "/report", "/~offline"]
+const PAGES = ["/", "/dashboard", "/priority", "/replay", "/methods", "/report", "/~offline"]
 
 const serwist = createSerwistRoute({
   swSrc: "app/sw.ts",
