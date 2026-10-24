@@ -224,7 +224,7 @@ Each rule returns `{id, action, target, quantity, deadline, rationale, source}`.
 - Group knee-or-deeper reports into ~150 m cells (geohash precision 7).
 - A cell is a **chronic spot** if it has reports on **≥3 distinct dates** in the past 12 months.
 - Each spot carries its barangay's `water_dist_m`, `bldg_density` and `hazard_pct` as context. These are not scored.
-- In round 1 the list is seeded from NOAH high-hazard barangays and the replay's simulated reports, both labelled.
+- Until real reports accumulate, the list is seeded from NOAH high-hazard barangays and the replay's simulated reports, both labelled.
 
 ## 7. API
 
@@ -289,7 +289,7 @@ Sidebar dashboard, with every page usable on a phone.
 
 - **Model (pytest):** the back-test runs end to end; a leakage check confirms rain features never use data unavailable at forecast time; `live.py` output matches the schema.
 - **Decision engine (vitest):** priority and doses against hand-calculated examples; table-driven tests for each recommendation trigger and for corroboration (2 reports → no countdown, 3 → countdown, 1 + Elevated → countdown); the chronic-spot date rule.
-- **Before freeze:** a manual smoke check on a phone: load Overview, submit a report, see it within 1 minute, play every replay event; then a fresh-clone `make all`.
+- **Before submission:** a manual smoke check on a phone: load Overview, submit a report, see it within 1 minute, play every replay event; then a fresh-clone `make all`.
 
 ## 13. Deployment
 
