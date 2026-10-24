@@ -15,6 +15,12 @@ GitHub Action, 06:00 PHT daily:
                                                /api/reports (route handler)  ◄──►  flood_reports
                                                priority, recommendations,
                                                chronic spots (TypeScript)
+                                                        ▲
+Browser (PWA)                                           │
+─────────────                                           │
+service worker cache: app shell, JSON, tiles ───────────┘
+IndexedDB outbox: reports filed offline ──► POST on reconnect
+decision engine runs on cached data when offline
 ```
 
 **Principles**
@@ -22,6 +28,7 @@ GitHub Action, 06:00 PHT daily:
 - **One deploy, one table.** Next.js on Vercel serves the pages and the only write path (community reports). The database stores reports and nothing else.
 - **One decision engine, two modes.** Priority, recommendations and chronic spots are small TypeScript functions. Live mode feeds them today's forecast plus database reports; replay feeds them a past event's forecast plus its simulated reports.
 - **Degrades gracefully.** If the daily job fails, the last committed `forecast.json` keeps serving with its date. Replay needs no network at all.
+- **Offline after first visit.** Everything the app shows is static files plus one reports endpoint, so a service worker can cache it all. The decision engine is pure TypeScript and runs in the browser on cached data (§10.1).
 
 ## 2. Stack
 
@@ -31,6 +38,8 @@ GitHub Action, 06:00 PHT daily:
 | Web | Next.js (App Router), TypeScript, MapLibre GL, Recharts, Tailwind + shadcn/ui |
 | DB | Neon Postgres via the Vercel integration; `@neondatabase/serverless` with plain SQL |
 | Geometry in TS | `@turf/boolean-point-in-polygon` (GPS → barangay) |
+| PWA | Serwist (`@serwist/next`) service worker; `app/manifest.ts` |
+| Offline storage | IndexedDB via `idb-keyval` (report outbox) |
 | Daily job | GitHub Actions cron |
 | Deploy | Vercel (project root `web/`) |
 | Basemap | OpenFreeMap |
@@ -59,7 +68,9 @@ pjdsc-26/
 ├── web/
 │   ├── app/                 (dashboard)/{page, replay, priority, report, methods}
 │   ├── app/api/reports/     route.ts (GET, POST)
-│   ├── lib/                 priority.ts, recommend.ts, spots.ts, db.ts
+│   ├── app/                 manifest.ts, sw.ts (service worker), ~offline/ fallback page
+│   ├── lib/                 priority.ts, recommend.ts, spots.ts, db.ts,
+│   │                        locate.ts (GPS → barangay), outbox.ts (offline reports)
 │   └── public/data/         forecast.json, barangays.geojson, performance.json,
 │                            config.json, replay/*.json   (all committed)
 ├── data/                    raw/, interim/, processed/, external/ (gitignored; shared by eda/ and pipeline/)
@@ -184,7 +195,7 @@ All weights live in `config.json` and are shown in the UI as assumptions.
 
 ```
 H_b = pct_area_flood_25yr_med + pct_area_flood_25yr_high            (0–100)
-R_b = min(1, Σ_{reports, last 7 days} w_depth · w_wade / 10)
+R_b = min(1, Σ_{reports, observed_at in last 7 days} w_depth · w_wade / 10)
       w_depth: ankle 0.25, knee 0.5, waist 1.0, chest+ 1.5;  w_wade: 1.5 if waded else 1.0
 W_b = (H_b / 100 + 0.5 · R_b) · pop_b
 rank by W_b; priority shown as a 0–100 percentile
@@ -207,10 +218,10 @@ Dosing rules (adult vs child, exclusions) appear as text from DOH guidance, not 
 ### 6.3 Corroboration and countdown
 
 A barangay's 72-hour prophylaxis countdown starts when either holds:
-- ≥3 reports at knee depth or deeper from distinct `ip_hash` values within 24 h, or
+- ≥3 reports at knee depth or deeper from distinct `ip_hash` values within 24 h of `observed_at`, or
 - ≥1 such report while the city alert is Elevated or higher.
 
-A single report only raises R_b. The countdown runs from the first qualifying report.
+A single report only raises R_b. The countdown runs from the first qualifying report's `observed_at`. Reports still queued on a device don't count until they reach the server.
 
 ### 6.4 Recommendations (`recommend.ts`)
 
@@ -230,17 +241,17 @@ Each rule returns `{id, action, target, quantity, deadline, rationale, source}`.
 ### 6.5 Chronic flood spots (`spots.ts`)
 
 - Group knee-or-deeper reports into ~150 m cells (geohash precision 7).
-- A cell is a **chronic spot** if it has reports on **≥3 distinct dates** in the past 12 months.
+- A cell is a **chronic spot** if it has reports on **≥3 distinct `observed_at` dates** in the past 12 months.
 - Each spot carries its barangay's `water_dist_m`, `bldg_density` and `hazard_pct` as context. These are not scored.
 - Until real reports accumulate, the list is seeded from NOAH high-hazard barangays and the replay's simulated reports, both labelled.
 
 ## 7. API
 
-Pages are server components that read the static JSON, query reports and run the decision engine. They revalidate every 60 s, so new reports appear within a minute. The only route handlers are:
+Pages render a server shell, and client components load data from `/data/*.json` and `GET /api/reports`, then run the decision engine in the browser. The same code path works online and from the service worker cache offline. Reports refetch every 60 s while online, so new reports appear within a minute. The only route handlers are:
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/api/reports` | `{lat?, lon?, psgc?, depth, duration_h, waded, website}` → `{id, psgc}`. `website` is the honeypot: if filled, return 200 and drop the report. GPS is converted to psgc server-side. Returns 429 after 5 reports per `ip_hash` per hour |
+| POST | `/api/reports` | `{client_id, observed_at, lat?, lon?, psgc?, depth, duration_h, waded, website}` → `{id, psgc}`. `client_id` is a UUID made on the device, so a resent report is a no-op (`on conflict do nothing`, returns the existing row). `observed_at` is rejected if in the future or older than 7 days. `website` is the honeypot: if filled, return 200 and drop the report. GPS is converted to psgc on the device and re-checked server-side. Returns 429 after 5 reports per `ip_hash` per hour |
 | GET | `/api/reports?since=` | GeoJSON points (no `ip_hash`) |
 
 ## 8. Database
@@ -248,18 +259,20 @@ Pages are server components that read the static JSON, query reports and run the
 ```sql
 create table flood_reports (
   id uuid primary key default gen_random_uuid(),
+  client_id uuid not null unique,
   created_at timestamptz not null default now(),
+  observed_at timestamptz not null,
   lat double precision, lon double precision,
   psgc text not null,
   depth text not null check (depth in ('ankle','knee','waist','chest')),
   duration_h real, waded boolean not null,
   ip_hash text not null
 );
-create index on flood_reports (created_at);
-create index on flood_reports (psgc, created_at);
+create index on flood_reports (observed_at);
+create index on flood_reports (psgc, observed_at);
 ```
 
-`ip_hash = sha256(IP_SALT || ip)`. Simulated replay reports live in `replay/*.json`, never in the database.
+`observed_at` is when the person saw the flood; `created_at` is when the server received it. They differ for reports queued offline, so all scoring windows use `observed_at`. `ip_hash = sha256(IP_SALT || ip)`. Simulated replay reports live in `replay/*.json`, never in the database.
 
 ## 9. Daily job (`.github/workflows/forecast.yml`)
 
@@ -283,12 +296,37 @@ Sidebar dashboard, with every page usable on a phone.
 - Every number has a tooltip showing its source and date. Every weight is labelled as an assumption.
 - Uses a color-blind-safe sequential palette, with values also shown as text.
 
+### 10.1 Offline (PWA)
+
+**Install.** `app/manifest.ts` (name, icons from the shared logo, `display: standalone`). Serwist builds `app/sw.ts` into `public/sw.js`.
+
+**Caching**
+
+| What | Strategy | Notes |
+|---|---|---|
+| App shell (JS, CSS, fonts, page HTML, `~offline` page) | Precache at install | Every route opens offline |
+| `barangays.geojson`, `config.json`, `performance.json`, `replay/*.json` | Precache at install | Change only on deploy |
+| `forecast.json` | Network first, cache fallback | Daily file; offline shows the cached copy and its `issued` date |
+| `GET /api/reports` | Network first, cache fallback | Offline shows the last fetched reports |
+| Basemap tiles (OpenFreeMap) | Cache first; Iloilo bounding box at z11–15 pre-warmed after install | Capped by a tile count limit; other areas cache as viewed |
+
+**Report outbox (`lib/outbox.ts`)**
+- Every report gets `client_id` and `observed_at` on the device, then goes into an IndexedDB outbox before any network call.
+- The outbox flushes on submit, on the `online` event, on app open, and via Background Sync where supported (Chromium). iOS Safari has no Background Sync, so it relies on the other triggers.
+- An entry is removed on 2xx or on a 4xx other than 429. 429 and network errors retry with backoff. `client_id` makes retries safe.
+- The Report page shows "Saved. Will send when online (n pending)".
+
+**On-device lookup (`lib/locate.ts`).** GPS → barangay with `@turf/boolean-point-in-polygon` on the cached `barangays.geojson`, so the form confirms the barangay offline. The server repeats the lookup.
+
+**Offline state.** A banner shows "Offline. Data from {date}" using `navigator.onLine` plus failed fetches. Decision cards computed offline are labelled as using cached reports.
+
 ## 11. Non-functional requirements
 
 | Area | Requirement |
 |---|---|
 | Performance | First map paint < 3 s on 4G; Overview < 2 s |
 | Availability | Stale forecast shows a "data from {date}" banner; replay works offline |
+| Offline | After one online visit, every page loads in airplane mode; precache stays under ~25 MB excluding tiles |
 | Privacy | No names; IPs stored only as salted hashes; no photos |
 | Reproducibility | `make all` rebuilds every artifact from HDX; seed 42; `uv.lock` and `package-lock.json` pinned |
 | Explainability | Every number traceable to inputs; assumptions visible |
@@ -296,8 +334,9 @@ Sidebar dashboard, with every page usable on a phone.
 ## 12. Testing
 
 - **Model (pytest):** the back-test runs end to end; a leakage check confirms rain features never use data unavailable at forecast time; `modeling/predict.py` output matches the schema.
-- **Decision engine (vitest):** priority and doses against hand-calculated examples; table-driven tests for each recommendation trigger and for corroboration (2 reports → no countdown, 3 → countdown, 1 + Elevated → countdown); the chronic-spot date rule.
-- **Before submission:** a manual smoke check on a phone: load Overview, submit a report, see it within 1 minute, play every replay event; then a fresh-clone `make all`.
+- **Decision engine (vitest):** priority and doses against hand-calculated examples; table-driven tests for each recommendation trigger and for corroboration (2 reports → no countdown, 3 → countdown, 1 + Elevated → countdown); the chronic-spot date rule; the outbox (queued → sent, duplicate send → one row, 429 → retried, 400 → dropped) with `fake-indexeddb`; `locate.ts` against known barangay points.
+- **Offline (Playwright):** load each page online, call `context.setOffline(true)`, reload, and assert data renders; submit a report offline, go online, and assert exactly one row.
+- **Before submission:** a manual smoke check on a phone: load Overview, submit a report, see it within 1 minute, play every replay event; repeat in airplane mode after installing, then reconnect and confirm the queued report arrives; then a fresh-clone `make all`.
 
 ## 13. Deployment
 
@@ -315,4 +354,7 @@ Sidebar dashboard, with every page usable on a phone.
 | Barangay ranking weakly supported | "Estimated exposure" label; Zamboanga CI; weights visible |
 | One bad report triggers action | Corroboration rule (§6.3) |
 | Hazard maps predate flood control | Stated limitation; post-2012 test; reports carry more weight over time |
-| Demo network failure | Replay is bundled static data |
+| Demo network failure | Replay is bundled static data; the whole app is precached (§10.1) |
+| Serwist and Next 16 Turbopack builds | Check compatibility first; fall back to `next build --webpack` |
+| Browser evicts cached data (iOS Safari clears storage for sites unused for a while) | Ask for `navigator.storage.persist()`; installed home-screen apps are evicted less; the app re-caches on next online visit |
+| Queued reports never sent (device stays offline, app uninstalled) | Pending count is visible; accepted as a known loss |
