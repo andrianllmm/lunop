@@ -14,7 +14,7 @@ export type BarangayFeature = {
 
 export type BarangayCollection = { type: "FeatureCollection"; features: BarangayFeature[] }
 
-export type MapPoint = { id: string; lat: number; lon: number; r?: number; className?: string }
+export type MapPoint = { id: string; lat: number; lon: number; r?: number; className?: string; onClick?: () => void }
 
 /** Red for outlines; MapLibre paint can't read CSS variables. */
 const OUTLINE = "#e5484d"
@@ -141,7 +141,7 @@ export function BarangayMap({
       <Map bounds={initialBounds} fitBoundsOptions={{ padding: 16 }} blank={offline} cooperativeGestures>
         <Polygons filled={filled} outlines={outlines} selected={highlight} onHover={onHover} onSelect={onSelect} />
         {points.map((p) => (
-          <MapMarker key={p.id} longitude={p.lon} latitude={p.lat}>
+          <MapMarker key={p.id} longitude={p.lon} latitude={p.lat} onClick={p.onClick}>
             <MarkerContent>
               <span
                 className={cn("block rounded-full border border-background bg-foreground", p.className)}
