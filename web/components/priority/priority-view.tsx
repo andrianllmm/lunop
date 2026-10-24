@@ -11,12 +11,15 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useReports } from "@/hooks/use-reports"
+import { config } from "@/lib/config"
 import { getJSON } from "@/lib/data"
 import { fmtDate, fmtInstant, fmtRange } from "@/lib/format"
 import type { BarangayPriority } from "@/lib/priority"
 import type { ReplayBundle, ReplayEvent } from "@/lib/replay"
 import { replaySpots, seedSpots, type Spot } from "@/lib/spots"
 import { engineState, type EngineState } from "@/lib/state"
+import { DAY_MS } from "@/lib/time"
 import type { Barangay, Forecast } from "@/lib/types"
 
 /** Flood-map barangays on the spots map: ColorBrewer blue, as water. */
@@ -35,6 +38,9 @@ export function PriorityView() {
   const [tab, setTab] = useState("ranking")
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Chronic spots look back a year, longer than the 7-day priority window
+  const [since] = useState(() => new Date(Date.now() - config.spots.window_days * DAY_MS).toISOString())
+  const { reports } = useReports(since)
 
   useEffect(() => {
     Promise.all([
@@ -54,10 +60,10 @@ export function PriorityView() {
   }, [])
 
   const barangays = useMemo(() => geo?.features.map((f) => f.properties) ?? [], [geo])
-  // No live reports yet; the engine runs on the forecast alone
+  // Live reports, refetched every minute; until they load (or offline with none cached), the forecast alone
   const state = useMemo(
-    () => (forecast && now ? engineState(forecast, barangays, [], now) : null),
-    [forecast, barangays, now],
+    () => (forecast && now ? engineState(forecast, barangays, reports ?? [], now) : null),
+    [forecast, barangays, reports, now],
   )
   // Live spots first; until they exist, simulated replay spots and flood-map seeds, both labelled
   const spots = useMemo(() => {
