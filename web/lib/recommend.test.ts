@@ -98,9 +98,9 @@ describe("case finding", () => {
 describe("hospital readiness", () => {
   it("uses the week with the most expected cases", () => {
     const h = run("High", 4).find((r) => r.id === "hospital_readiness")!
-    expect(h.quantity).toEqual({ lo: 2, hi: 16, unit: "cases (80% interval)" })
+    expect(h.quantity).toEqual({ lo: 2, hi: 16, unit: "expected cases" })
     expect(h.deadline).toBe("2026-11-01T16:00:00.000Z")
-    expect(h.rationale).toBe("Expected 9 cases in the week of Nov 2, 2.25× the usual")
+    expect(h.rationale).toBe("9 cases expected in the week of Nov 2 (80% interval 2–16), 2.25× the usual")
   })
 })
 

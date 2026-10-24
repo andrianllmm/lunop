@@ -1,9 +1,18 @@
-import { TimerIcon } from "lucide-react"
+import {
+  ChevronRightIcon,
+  HospitalIcon,
+  MegaphoneIcon,
+  PackageIcon,
+  PillIcon,
+  SearchIcon,
+  ShovelIcon,
+  type LucideIcon,
+} from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { fmtDate, fmtInstant, fmtRange } from "@/lib/format"
+import type { Recommendation, RecommendationId } from "@/lib/recommend"
 import type { ReplayDay } from "@/lib/replay"
 import { HOUR_MS } from "@/lib/time"
 import type { Level } from "@/lib/types"
@@ -15,99 +24,139 @@ const LEVEL_VARIANT: Record<Level, "outline" | "secondary" | "default" | "destru
   Severe: "destructive",
 }
 
-const MAX_TARGETS = 5
+const ICON: Record<RecommendationId, LucideIcon> = {
+  prophylaxis: PillIcon,
+  advisory: MegaphoneIcon,
+  case_finding: SearchIcon,
+  hospital_readiness: HospitalIcon,
+  pre_position: PackageIcon,
+  drain_clearing: ShovelIcon,
+}
+
+/** Deadlines closer than this are shown as urgent. */
+const URGENT_H = 24
 
 export function LevelBadge({ level }: { level: Level }) {
   return <Badge variant={LEVEL_VARIANT[level]}>{level}</Badge>
 }
 
+/** "18 h left" or "3 d left". */
+function timeLeft(deadline: string, now: Date) {
+  const h = Math.max(0, Math.round((Date.parse(deadline) - now.getTime()) / HOUR_MS))
+  return { h, label: h < 48 ? `${h} h left` : `${Math.round(h / 24)} d left` }
+}
+
+/** One line of who and how much, e.g. "12 barangays · 1,200–2,400 doses". */
+function summary(r: Recommendation, countdowns: number) {
+  const parts: string[] = []
+  if (r.target.length === 1) parts.push(r.target[0].name)
+  else if (r.target.length > 1) parts.push(`${r.target.length} barangays`)
+  if (r.quantity) parts.push(`${fmtRange(r.quantity.lo, r.quantity.hi)} ${r.quantity.unit}`)
+  if (r.id === "prophylaxis" && countdowns > 0) parts.push(`${countdowns} on countdown`)
+  return parts.join(" · ")
+}
+
+function Action({ r, day }: { r: Recommendation; day: ReplayDay }) {
+  const Icon = ICON[r.id]
+  const left = r.deadline ? timeLeft(r.deadline, day.now) : null
+
+  return (
+    <details className="group rounded-md border">
+      <summary className="flex cursor-pointer list-none items-start gap-3 p-3 [&::-webkit-details-marker]:hidden">
+        <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="font-medium">{r.action}</span>
+          <span className="text-muted-foreground tabular-nums">{summary(r, day.countdowns.size)}</span>
+        </div>
+        {left && (
+          <Badge variant={left.h < URGENT_H ? "destructive" : "outline"} className="shrink-0 tabular-nums">
+            {left.label}
+          </Badge>
+        )}
+        <ChevronRightIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+      </summary>
+
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-t p-3 text-muted-foreground">
+        {r.target.length > 0 && (
+          <>
+            <dt>Where</dt>
+            <dd className="text-foreground">{r.target.map((t) => t.name).join(", ")}</dd>
+          </>
+        )}
+        {r.deadline && (
+          <>
+            <dt>By</dt>
+            <dd className="text-foreground">{fmtInstant(r.deadline)}</dd>
+          </>
+        )}
+        {r.window && (
+          <>
+            <dt>Window</dt>
+            <dd className="text-foreground">
+              {fmtInstant(r.window[0])} to {fmtInstant(r.window[1])}
+            </dd>
+          </>
+        )}
+        {r.message && (
+          <>
+            <dt>Message</dt>
+            <dd className="text-foreground">
+              {r.message.en}
+              <span className="mt-1 block text-muted-foreground">{r.message.fil}</span>
+            </dd>
+          </>
+        )}
+        {r.checklist && (
+          <>
+            <dt>Stock</dt>
+            <dd className="text-foreground">{r.checklist.join(", ")}</dd>
+          </>
+        )}
+        <dt>Why</dt>
+        <dd>{r.rationale}</dd>
+        <dt>Source</dt>
+        <dd>{r.source}</dd>
+      </dl>
+    </details>
+  )
+}
+
 export function DecisionCard({ day, className }: { day: ReplayDay; className?: string }) {
-  const { bulletin, recommendations, countdowns, ranked, now } = day
-  const names = new Map(ranked.map((r) => [r.psgc, r.name]))
+  const { bulletin, recommendations } = day
 
   return (
     <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Recommendation <LevelBadge level={bulletin.level} />
+          Actions <LevelBadge level={bulletin.level} />
         </CardTitle>
-        <CardDescription>
-          Bulletin of {fmtDate(bulletin.issued)}, data to {fmtDate(bulletin.data_as_of)}. Peak ratio {bulletin.ratio}×
-          the usual.
-        </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 text-sm">
-        {bulletin.drivers.length > 0 && (
-          <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-            {bulletin.drivers.map((d) => (
-              <li key={d}>{d}</li>
-            ))}
-          </ul>
-        )}
-
-        {countdowns.size > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <p className="flex items-center gap-1.5 font-medium">
-              <TimerIcon className="size-4 text-destructive" />
-              Prophylaxis countdowns
-            </p>
-            <ul className="space-y-1">
-              {[...countdowns.values()].map((c) => {
-                const left = Math.max(0, Math.round((Date.parse(c.deadline) - now.getTime()) / HOUR_MS))
-                return (
-                  <li key={c.psgc} className="flex justify-between gap-2">
-                    <span>{names.get(c.psgc) ?? c.psgc}</span>
-                    <span className="text-muted-foreground tabular-nums">
-                      {left} h left · {c.reason === "corroborated" ? "3+ devices" : "1 report, alert up"}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        )}
-
+      <CardContent className="flex flex-col gap-2 text-sm">
         {recommendations.length === 0 ? (
-          <p className="text-muted-foreground">No action needed today. Keep watching the forecast and reports.</p>
+          <p className="text-muted-foreground">No action needed today.</p>
         ) : (
-          recommendations.map((r, i) => (
-            <div key={r.id} className="flex flex-col gap-1.5">
-              {i > 0 && <Separator className="mb-2" />}
-              <p className="font-medium">{r.action}</p>
-              {r.target.length > 0 && (
-                <p>
-                  {r.target
-                    .slice(0, MAX_TARGETS)
-                    .map((t) => t.name)
-                    .join(", ")}
-                  {r.target.length > MAX_TARGETS && (
-                    <span className="text-muted-foreground"> and {r.target.length - MAX_TARGETS} more</span>
-                  )}
-                </p>
-              )}
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-muted-foreground">
-                {r.quantity && (
-                  <>
-                    <dt>Quantity</dt>
-                    <dd className="text-foreground tabular-nums">
-                      {fmtRange(r.quantity.lo, r.quantity.hi)} {r.quantity.unit}
-                    </dd>
-                  </>
-                )}
-                {r.deadline && (
-                  <>
-                    <dt>By</dt>
-                    <dd className="text-foreground">{fmtInstant(r.deadline)}</dd>
-                  </>
-                )}
-                <dt>Why</dt>
-                <dd>{r.rationale}</dd>
-                <dt>Source</dt>
-                <dd>{r.source}</dd>
-              </dl>
-            </div>
-          ))
+          recommendations.map((r) => <Action key={r.id} r={r} day={day} />)
         )}
+
+        <details className="group mt-2 text-muted-foreground">
+          <summary className="flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+            <ChevronRightIcon className="size-4 transition-transform group-open:rotate-90" />
+            Why {bulletin.level}?
+          </summary>
+          <div className="mt-2 flex flex-col gap-2 pl-5">
+            <p>
+              Bulletin of {fmtDate(bulletin.issued)}, data to {fmtDate(bulletin.data_as_of)}. Peak {bulletin.ratio}× the
+              usual.
+            </p>
+            {bulletin.drivers.length > 0 && (
+              <ul className="list-disc space-y-1 pl-4">
+                {bulletin.drivers.map((d) => (
+                  <li key={d}>{d}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </details>
       </CardContent>
     </Card>
   )
