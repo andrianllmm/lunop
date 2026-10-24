@@ -286,6 +286,8 @@ def save_geojson(g: gpd.GeoDataFrame, path: Path) -> None:
 def build() -> None:
     """Raw CCHAIN -> data/processed/ and web/public/data/barangays.geojson.
 
+    Columns, units and nulls for each output: docs/DATA.md.
+
     Outputs:
     - panel.parquet: city x week on the full Monday calendar (cases, rain, woy, level_c, rain_clim)
     - events.parquet: top-2% rain weeks per city, with LOEO windows

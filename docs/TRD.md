@@ -48,7 +48,7 @@ decision engine runs on cached data when offline
 
 ```
 pjdsc-26/
-├── docs/                    PRD.md, TRD.md, FINDINGS.md
+├── docs/                    PRD.md, TRD.md, FINDINGS.md, DATA.md
 ├── eda/                     EDA notebooks (Jupytext .py + .ipynb), reports/ HTML; own uv project
 ├── pipeline/                uv project (Cookiecutter Data Science layout)
 │   ├── lunop/               package, one module per stage
@@ -99,7 +99,7 @@ A monorepo: `pipeline/` (Python) and `web/` (Next.js) are separate projects. `pi
 
 Iloilo City is PSGC `PH063022000`, with 180 barangays.
 
-**Calendar:** PIDSR weeks start Monday and use 52-week years, so the weeks of 2012-12-31 and 2018-01-01 are missing. `pipeline/lunop/dataset.py` reindexes each city to the full weekly calendar so a row shift is always a one-week lag. EDA and data checks: [FINDINGS.md](FINDINGS.md).
+**Calendar:** PIDSR weeks start Monday and use 52-week years, so the weeks of 2012-12-31 and 2018-01-01 are missing. `pipeline/lunop/dataset.py` reindexes each city to the full weekly calendar so a row shift is always a one-week lag. EDA and data checks: [FINDINGS.md](FINDINGS.md). Column definitions for every output: [DATA.md](DATA.md).
 
 **Build** (`make data` = `python -m lunop.dataset download verify build`):
 - `verify` checks every raw CSV against `pipeline/raw.sha256`, so a rebuild uses the same HDX snapshot. Rebuilds are byte-identical.

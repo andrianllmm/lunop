@@ -14,6 +14,7 @@ Read the notebooks in order: open the `.ipynb` on GitHub or in Jupyter, or open 
 ## Findings
 
 The summary of findings, implications and open issues is in [`docs/FINDINGS.md`](../docs/FINDINGS.md).
+Column definitions for the processed tables are in [`docs/DATA.md`](../docs/DATA.md).
 
 ## Running
 
