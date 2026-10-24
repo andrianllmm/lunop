@@ -126,12 +126,16 @@ log μ = city_c + s(woy_{t+h}) + Σ_{k=0..8} β_k · log1p(rain[c, t+h−k]) + �
 - `s(woy)`: 2 sine/cosine harmonic pairs of week of year.
 - Rain lags after week t use Open-Meteo forecast rain (up to 16 days), then the seasonal mean rain for that week.
 - `level_c`: mean log cases over the city's past 52 weeks, to absorb long-term trends.
+- `recent_cases[c, t]`: mean cases over weeks t−1..t, so a skipped PIDSR week doesn't drop the row.
 - One model per horizon h ∈ {1, 2, 3, 4}. Dispersion α is estimated by maximum likelihood.
 - **Iloilo at h ≥ 3 is unproven.** In the EDA back-test, adding rain to season + recent cases cut Iloilo's all-weeks error by 9% at h = 1 and 4% at h = 2, but raised it by 10% at h = 3. `modeling/evaluate.py` reports every metric per horizon, and tests an Iloilo × rain interaction. If h = 3–4 still lose on post-storm weeks, the UI caveats those weeks.
 - **Two variants**, fitted in the same loop:
   - `with_cases` includes γ. It is used for replay and the back-test, and compared against the seasonal + recent-cases baseline.
   - `rain_only` drops both γ and `level_c`, which need recent cases. It is used live, where there are no current case counts.
 - Fit on 2008–2017, validate on 2018–2022, refit on all years for deployment.
+- `rain_only` trains on 2013 onward. Fitted from 2008, the 2011–12 outbreaks push Iloilo's intercept to about twice the 2018–2022 level (5.9 vs 2.7 cases/week), and with no `level_c` it can't correct. Back-test (2018–2022, Iloilo, Poisson deviance): seasonal 3.18, `rain_only` 2.82 (−11%) when both start in 2013.
+- Back-test stand-in for forecast rain: observed rain for weeks t+1..t+2 (the 16-day window), `rain_clim` after. The same rule builds the training features, so coefficients match what the live model sees.
+- α is fitted by profile likelihood over IRLS fits (`statsmodels` `NegativeBinomial`'s joint Newton fit diverged).
 
 **Dropped, with reasons recorded on the Methods page:**
 - River discharge (GloFAS) added about 1% on top of rain, so it was dropped.
