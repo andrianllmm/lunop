@@ -40,9 +40,10 @@ GitHub Action, 06:00 PHT daily:
 ```
 pjdsc-26/
 ├── docs/                    PRD.md, TRD.md
-├── eda-experiment/          exploratory scripts (existing)
+├── eda/                     EDA notebooks (Jupytext .py + .ipynb), reports/ HTML
+├── scripts/
+│   └── download.py          fetch CCHAIN tables from HDX → data/raw/
 ├── model/                   uv project
-│   ├── download.py          fetch CCHAIN tables from HDX → data/raw/
 │   ├── build.py             weekly city panel; barangays.geojson with static attributes
 │   ├── rain_check.py        CCHAIN vs Open-Meteo archive (§5.5)
 │   ├── fit.py               fit both model variants → artifacts/model.json
@@ -56,7 +57,7 @@ pjdsc-26/
 │   ├── lib/                 priority.ts, recommend.ts, spots.ts, db.ts
 │   └── public/data/         forecast.json, barangays.geojson, performance.json,
 │                            config.json, replay/*.json   (all committed)
-├── data/                    raw/ (gitignored), processed/
+├── data/                    raw/, processed/ (gitignored)
 ├── artifacts/               model.json
 ├── .github/workflows/       forecast.yml
 └── Makefile                 setup, data, model, evaluate, replay, live, web, test, all
