@@ -91,7 +91,7 @@ A monorepo: `pipeline/` (Python) and `web/` (Next.js) are separate projects. `pi
 | Barangay cases | CCHAIN `disease_lgu_disaggregated_totals` | Barangay × week (only Zamboanga usable, 2013–2022) | Ranking check only |
 | Rain (history) | CCHAIN `climate_atmosphere.pr` | Barangay × day, 2003–2022 | Training, replay |
 | Rain (live) | Open-Meteo forecast + archive APIs | Point × day | Live forecast |
-| Flood hazard | CCHAIN `project_noah_hazards` | Barangay; 25-yr low/med/high % area | Exposure |
+| Flood hazard | CCHAIN `project_noah_hazards` | Barangay; 100-yr low/med/high % area | Exposure |
 | Population | CCHAIN `worldpop_population` | Barangay × year, to 2020 (later years reuse 2020) | Exposure, doses |
 | Boundaries | CCHAIN `brgy_geography` | Barangay polygons | Map, GPS lookup |
 | Hospital access | CCHAIN `geoportal_doh_poi_health`, `mapbox_health_facility_brgy_isochrones` | Barangay | Access column and flag |
@@ -110,7 +110,7 @@ Iloilo City is PSGC `PH063022000`, with 180 barangays.
 - `events.parquet`: each city's top-2% rain weeks, 2008–2022 (16 for Iloilo), with `window_start/end` at −2/+8 weeks.
 
 **Static outputs** (committed to `web/public/data/`):
-- `barangays.geojson`: simplified polygons (~1e-4°, 5 decimals) with `psgc, name, area_km2, pop` (WorldPop 2020), `hazard_pct` (NOAH 25-yr med + high), `access30_pct` (pop % within 30 min of a hospital), `travel_min` (first isochrone of 5/15/30 min reaching half the pop; null if > 30), `hospital_dist_m`, `water_dist_m` (nearest river, stream, canal or drain), `bldg_density` (per km²). CCHAIN caps distances at 10 km.
+- `barangays.geojson`: simplified polygons (~1e-4°, 5 decimals) with `psgc, name, area_km2, pop` (WorldPop 2020), `hazard_pct` (NOAH 100-yr low + med + high), `access30_pct` (pop % within 30 min of a hospital), `travel_min` (first isochrone of 5/15/30 min reaching half the pop; null if > 30), `hospital_dist_m`, `water_dist_m` (nearest river, stream, canal or drain), `bldg_density` (per km²). CCHAIN caps distances at 10 km.
 - `config.json`: every weight and assumption used by the TypeScript functions, so the UI can display them.
 
 ## 5. Forecast model
@@ -179,7 +179,7 @@ Applied to the maximum `ratio` over weeks +1 to +4. Thresholds are tuned per var
 - Ablations: without rain (`cases`); training from 2008, with and without the Sendong-era weeks (CDO, Iloilo 2011–12); an Iloilo-specific rain slope; `rain_only` fed Open-Meteo rain.
 - Event-study curve: cases ÷ seasonal norm at weeks −2 to +6 after heavy rain.
 
-**Barangay check:** score Zamboanga barangays with hazard × population and report the Spearman ρ against the observed case rate, with a bootstrap 95% CI.
+**Barangay check:** score Zamboanga barangays with hazard × population and report the Spearman ρ against the observed case rate, with a bootstrap 95% CI, and the partial ρ controlling for population (population alone tracks the rate).
 
 The LOEO results choose the three replay events: two hits and one miss or false alarm, from different storms. Picked: 2011-08-15 (hit), 2012-05-28 (hit), 2009-07-27 (miss).
 
@@ -188,7 +188,7 @@ The LOEO results choose the three replay events: two hits and one miss or false 
 - Alerts at the event week, `with_cases`: High or Severe on 6 of 7 surges (observed ≥ 1.5× baseline over weeks +1..+4), with 1 false alarm among 7 alerts. `rain_only`: 1 of 8.
 - Weekly, Iloilo 2018–2022: `with_cases` High+ catches 19% of surge weeks, and 23% of its High+ alerts are false. `rain_only` High+ catches 2%.
 - Event study: cases reach 3.3× the seasonal norm 2–3 weeks after heavy rain (all cities and Iloilo).
-- Zamboanga: ρ = 0.23 (95% CI 0.04–0.42) for `hazard_pct`, 0.26 for the medium layer, 0.00 for high, 0.25 for hazard × population.
+- Zamboanga: ρ = 0.52 (95% CI 0.37–0.66) for `hazard_pct` (100-yr, any level), 0.37 (0.19–0.54) net of population; population alone 0.47; hazard × population 0.57. The old 25-yr medium + high layer: 0.23, but 0.05 net of population.
 
 ### 5.5 Rain source check (`pipeline/lunop/rain_check.py`)
 
@@ -206,7 +206,7 @@ The model is trained on CCHAIN rain and run live on Open-Meteo rain, so we check
 - **Live alerts are weak.** Without recent cases, `rain_only` beats seasonal on average but rarely flags surges (2% of surge weeks at High+). Most outbreak signal comes from recent cases, which live mode doesn't have. The UI should present the live level as "rain risk", not as an outbreak detector.
 - **Overshoot at outbreak peaks:** γ is above 1 at h = 1 (cases forecast to grow faster than they are), so during the 2011 outbreak `with_cases` forecast 241 for a week that had 113.
 - **Typical events:** by median LOEO error, seasonal beats `with_cases`; the gains come from big events.
-- **Barangay check is one city:** Zamboanga ρ = 0.23 (95% CI 0.04–0.42), carried by the 25-yr *medium* hazard layer; *high* alone shows nothing.
+- **Barangay check is one city:** Zamboanga only, and the 100-yr layer was picked from about 12 variants on the same data, so ρ = 0.37 net of population is somewhat optimistic.
 - **Non-stationarity:** cases dropped after 2012 (possibly Iloilo's flood control works, to be verified). Training from 2013 handles it for now; an Iloilo post-2012 indicator is moot once 2008–2012 are excluded.
 - **Rain source mismatch:** r = 0.71 between CCHAIN and Open-Meteo (§5.5).
 - **Data ends in 2022;** live mode runs without current cases.
@@ -218,7 +218,7 @@ All weights live in `config.json` and are shown in the UI as assumptions.
 ### 6.1 Priority (`priority.ts`)
 
 ```
-H_b = pct_area_flood_25yr_med + pct_area_flood_25yr_high            (0–100)
+H_b = pct_area_flood_100yr_low + _med + _high, capped at 100     (0–100)
 R_b = min(1, Σ_{reports, observed_at in last 7 days} w_depth · w_wade / 10)
       w_depth: ankle 0.25, knee 0.5, waist 1.0, chest+ 1.5;  w_wade: 1.5 if waded else 1.0
 W_b = (H_b / 100 + 0.5 · R_b) · pop_b
@@ -270,7 +270,7 @@ Each rule returns `{id, action, target, quantity, deadline, rationale, source}`.
 - Group knee-or-deeper reports into ~150 m cells (geohash precision 7).
 - A cell is a **chronic spot** if it has reports on **≥3 distinct `observed_at` dates** in the past 12 months.
 - Each spot carries its barangay's `water_dist_m`, `bldg_density` and `hazard_pct` as context. These are not scored.
-- Until real reports accumulate, the list is seeded from NOAH high-hazard barangays and the replay's simulated reports, both labelled.
+- Until real reports accumulate, the list is seeded from barangays with `hazard_pct` ≥ 90 (15 barangays) and the replay's simulated reports, both labelled.
 
 ## 7. API
 

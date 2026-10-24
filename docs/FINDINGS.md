@@ -38,8 +38,8 @@ What the data says, what it means for LUNOP, and what's still open. Source: the 
 | Finding | Result | Notebook |
 |---|---|---|
 | Population | Drives raw counts (ρ = 0.75), so hazard is judged on rates | 04 |
-| Hazard vs case rate | Medium/high 25-yr hazard share: ρ = **0.23** (95% CI 0.03–0.40) | 04 |
-| Layer sensitivity | Signal comes from 25-yr *medium*; *high* alone shows nothing | 04 |
+| Hazard vs case rate | 100-yr hazard share (any level): ρ = **0.52** (95% CI 0.37–0.66); 0.37 (0.19–0.54) after controlling for population | `backtest.md` |
+| Old layer | 25-yr medium/high: ρ = 0.23, but **0.05** after controlling for population, so its signal was mostly population | `backtest.md` |
 
 ## What this means for LUNOP
 
@@ -52,7 +52,7 @@ What the data says, what it means for LUNOP, and what's still open. Source: the 
 ## Open issues
 
 - ⚠️ **Iloilo 3-week forecast gets worse with rain (−10%).** Check forecast skill on post-storm weeks and test an Iloilo-specific rain term before relying on h = 3.
-- ⚠️ **Iloilo has almost no 25-yr hazard:** only 5 of 180 barangays have any medium/high area (max 14%), so `H_b` is ~0 and priority falls back to population. The 100-yr layer covers 132 barangays (medium). Choose a layer for Iloilo before tuning priority.
+- **Hazard layer (resolved, #30):** the 25-yr layer had only 5 of 180 Iloilo barangays above 0, so priority fell back to population. `hazard_pct` now uses the 100-yr layer, any level (160 barangays > 0). About 12 layer variants were compared on Zamboanga, so its ρ is somewhat optimistic.
 - Iloilo has no barangay case data, so the ranking can't be validated where it's used.
 - PIDSR week definition (onset vs report) affects how the lag is read.
 - NOAH hazard predates recent flood control.

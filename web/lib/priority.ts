@@ -8,7 +8,7 @@ export type BarangayPriority = {
   psgc: string
   name: string
   pop: number
-  /** H_b: share of area in 25-yr medium or high flood hazard, 0–100. */
+  /** H_b: share of area in the NOAH 100-yr flood hazard (any level), 0–100. */
   hazard: number
   /** R_b: recent report score, 0–1. */
   report_score: number

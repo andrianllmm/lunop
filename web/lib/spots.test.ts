@@ -7,7 +7,7 @@ import type { Depth } from "@/lib/types"
 
 const now = new Date("2026-10-24T12:00:00+08:00")
 const here = { lat: 10.7203, lon: 122.5621 }
-const barangays = [barangay("A", { name: "Alpha", hazard_pct: 14.3, water_dist_m: 0 }), barangay("B", { hazard_pct: 0.5 })]
+const barangays = [barangay("A", { name: "Alpha", hazard_pct: 95.4, water_dist_m: 0 }), barangay("B", { hazard_pct: 0.5 })]
 const at = (observed_at: string, depth: Depth = "knee", over = {}) => report("A", observed_at, depth, { ...here, ...over })
 
 describe("geohash", () => {
@@ -32,7 +32,7 @@ describe("chronicSpots", () => {
       dates: ["2026-10-01", "2026-10-05", "2026-10-09"],
       report_count: 4,
       simulated: false,
-      context: { water_dist_m: 0, hazard_pct: 14.3 },
+      context: { water_dist_m: 0, hazard_pct: 95.4 },
     })
   })
 

@@ -124,11 +124,13 @@ r = 0.714, ratio of means = 1.092, scale = 1.092
 
 ## Zamboanga barangay check (101 barangays, 328 cases)
 
-Spearman ρ against cases per 100k per year, bootstrap 95% CI:
+Spearman ρ against cases per 100k per year, bootstrap 95% CI. hazard_pct is the NOAH 100-yr layer (any level), hazard_25yr the 25-yr medium + high layer; *_net_pop controls for population:
 
-|                  |    rho |     lo |    hi |
-|:-----------------|-------:|-------:|------:|
-| hazard_pct       |  0.225 |  0.04  | 0.417 |
-| hazard_25yr_med  |  0.26  |  0.081 | 0.443 |
-| hazard_25yr_high | -0.001 | -0.202 | 0.214 |
-| score            |  0.253 |  0.073 | 0.439 |
+|                     |   rho |     lo |    hi |
+|:--------------------|------:|-------:|------:|
+| hazard_pct          | 0.522 |  0.365 | 0.656 |
+| hazard_25yr         | 0.225 |  0.04  | 0.417 |
+| pop                 | 0.472 |  0.294 | 0.62  |
+| score               | 0.565 |  0.403 | 0.696 |
+| hazard_pct_net_pop  | 0.372 |  0.194 | 0.541 |
+| hazard_25yr_net_pop | 0.047 | -0.142 | 0.254 |
