@@ -1,7 +1,7 @@
 # PRD: LUNOP
 
 > **L**eptospirosis **U**psurge **N**owcasting & **O**utbreak **P**revention. *Lunop* is Hiligaynon for "flood".
-> Team Random Seed 42, PJDSC 2026. Status: revised, 2026-10-24.
+> PJDSC 2026. Status: revised, 2026-10-24.
 
 ## 1. Summary
 

@@ -152,14 +152,6 @@ pjdsc-26/
 - [Back-test report](pipeline/reports/backtest.md): forecast accuracy against baselines
 - [REFERENCES](docs/REFERENCES.md): all sources, APA 7
 
-## Team
-
-Team Random Seed 42, [PJDSC 2026](https://pjdsc26-website.vercel.app/):
-
-- [@andrianllmm](https://github.com/andrianllmm)
-- [@Romyr05](https://github.com/Romyr05)
-- [@llaollao902](https://github.com/llaollao902)
-
 ## License
 
 [MIT](LICENSE)
