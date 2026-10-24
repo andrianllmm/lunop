@@ -1,7 +1,5 @@
 # Project LUNOP
 
----
-
 **L**eptospirosis **U**psurge **N**owcasting & **O**utbreak **P**revention
 
 LUNOP is a web-based predictive and prescriptive decision-support system for the Iloilo City Health Office response to leptospirosis after floods. 
