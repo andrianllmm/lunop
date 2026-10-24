@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronLeftIcon, ChevronRightIcon, PauseIcon, PlayIcon } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Bar, BarChart, Cell, ReferenceLine, XAxis } from "recharts"
 
 import { BarangayMap, type BarangayCollection, type MapPoint } from "@/components/barangay-map"
@@ -18,7 +18,7 @@ import { config } from "@/lib/config"
 import { fmtDate } from "@/lib/format"
 import { replayDay, type ReplayBundle, type ReplayEvent } from "@/lib/replay"
 import { DAY_MS } from "@/lib/time"
-import type { Depth } from "@/lib/types"
+import type { Barangay, Depth } from "@/lib/types"
 
 const STEP_MS = 700
 
@@ -32,14 +32,15 @@ const RAIN_BINS: [number, string][] = [
   [1, "#c6dbef"],
 ]
 
-const DRY = "color-mix(in oklch, var(--muted-foreground) 15%, transparent)"
+/** Dry barangays stay see-through so the basemap shows. */
+const DRY = "rgba(148, 163, 184, 0.3)"
 
 function rainColor(mm: number | undefined) {
   if (mm === undefined) return DRY
   return RAIN_BINS.find(([min]) => mm >= min)?.[1] ?? DRY
 }
 
-const DEPTH_R: Record<Depth, number> = { ankle: 4, knee: 6, waist: 8, chest: 10 }
+const DEPTH_R: Record<Depth, number> = { ankle: 3, knee: 4, waist: 5, chest: 6 }
 
 const OUTCOME: Record<ReplayEvent["outcome"], string> = { hit: "Hit", miss: "Miss", false_alarm: "False alarm" }
 
@@ -113,6 +114,8 @@ export function ReplayView() {
     () => (ready ? replayDay(bundle, barangays, Math.min(index, bundle.days.length - 1)) : null),
     [ready, bundle, barangays, index],
   )
+  const fill = useCallback((b: Barangay) => rainColor(day?.rain.get(b.psgc)), [day])
+  const outlined = useMemo(() => new Set(day?.countdowns.keys()), [day])
 
   if (error) return <p className="text-sm text-destructive">Could not load replay data ({error}).</p>
   if (!events || !geo || !day || !bundle) return <Skeleton className="h-[40rem] w-full" />
@@ -124,7 +127,7 @@ export function ReplayView() {
   const points: MapPoint[] = recent.flatMap((r) =>
     r.lat == null || r.lon == null
       ? []
-      : [{ id: r.client_id, lat: r.lat, lon: r.lon, r: DEPTH_R[r.depth], className: "fill-amber-500 dark:fill-amber-400" }],
+      : [{ id: r.client_id, lat: r.lat, lon: r.lon, r: DEPTH_R[r.depth], className: "bg-amber-500 dark:bg-amber-400" }],
   )
   const rank = new Map(day.ranked.map((r) => [r.psgc, r]))
   const hovered = hover ? rank.get(hover) : undefined
@@ -234,13 +237,11 @@ export function ReplayView() {
           <CardContent className="flex flex-col gap-3">
             <BarangayMap
               features={geo.features}
-              fill={(b) => rainColor(day.rain.get(b.psgc))}
-              outlined={new Set(day.countdowns.keys())}
+              fill={fill}
+              outlined={outlined}
               points={points}
-              selected={hover}
               onHover={setHover}
-              label={`Rain by barangay on ${day.date}`}
-              className="max-h-[28rem]"
+              className="h-[28rem]"
             />
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">

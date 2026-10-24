@@ -1,23 +1,25 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 
+import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, useMap } from "@/components/ui/map"
 import type { Barangay } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 export type BarangayFeature = {
+  type: "Feature"
   properties: Barangay
   geometry: { type: "Polygon"; coordinates: number[][][] }
 }
 
-export type BarangayCollection = { features: BarangayFeature[] }
+export type BarangayCollection = { type: "FeatureCollection"; features: BarangayFeature[] }
 
 export type MapPoint = { id: string; lat: number; lon: number; r?: number; className?: string }
 
-const WIDTH = 1000
+/** Red for outlines; MapLibre paint can't read CSS variables. */
+const OUTLINE = "#e5484d"
 
-/** Equirectangular projection fitted to the features' bounds. */
-function project(features: BarangayFeature[]) {
+function bounds(features: BarangayFeature[]): [[number, number], [number, number]] {
   let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity]
   for (const f of features)
     for (const [x, y] of f.geometry.coordinates.flat()) {
@@ -26,87 +28,104 @@ function project(features: BarangayFeature[]) {
       minY = Math.min(minY, y)
       maxY = Math.max(maxY, y)
     }
-  const kx = Math.cos((((minY + maxY) / 2) * Math.PI) / 180)
-  const scale = WIDTH / ((maxX - minX) * kx)
-  const xy = (lon: number, lat: number): [number, number] => [(lon - minX) * kx * scale, (maxY - lat) * scale]
-  return { xy, height: (maxY - minY) * scale }
+  return [
+    [minX, minY],
+    [maxX, maxY],
+  ]
 }
 
-/** Barangay polygons as SVG, filled per barangay. Works without a basemap or network. */
+/** First label layer of the basemap, so polygons draw under place names. */
+function useLabelLayer() {
+  const { map, isLoaded } = useMap()
+  return isLoaded ? map?.getStyle().layers.find((l) => l.type === "symbol")?.id : undefined
+}
+
+function Polygons({
+  filled,
+  outlines,
+  onHover,
+}: {
+  filled: GeoJSON.FeatureCollection
+  outlines: GeoJSON.FeatureCollection
+  onHover?: (psgc: string | null) => void
+}) {
+  const beforeId = useLabelLayer()
+  const { resolvedTheme } = useMap()
+  return (
+    <>
+      <MapGeoJSON
+        id="barangays"
+        data={filled}
+        promoteId="psgc"
+        fillPaint={{ "fill-color": ["get", "color"], "fill-opacity": 0.75 }}
+        fillHoverPaint={{ "fill-opacity": 0.95 }}
+        linePaint={{ "line-color": resolvedTheme === "dark" ? "#000000" : "#ffffff", "line-width": 0.5, "line-opacity": 0.6 }}
+        interactive={!!onHover}
+        onHover={(e) => onHover?.(e ? String(e.feature.properties?.psgc) : null)}
+        onClick={(e) => onHover?.(String(e.feature.properties?.psgc))}
+        beforeId={beforeId}
+      />
+      <MapGeoJSON
+        id="outlined"
+        data={outlines}
+        fillPaint={false}
+        linePaint={{ "line-color": OUTLINE, "line-width": 2.5 }}
+        beforeId={beforeId}
+      />
+    </>
+  )
+}
+
+/**
+ * Barangay polygons over an OpenFreeMap basemap. Missing tiles leave a blank background;
+ * opened offline, it skips the basemap so the polygons still draw.
+ */
 export function BarangayMap({
   features,
   fill,
   outlined,
   points = [],
-  selected,
   onHover,
   className,
-  label,
 }: {
   features: BarangayFeature[]
+  /** Hex or rgb color per barangay; MapLibre can't read CSS variables. */
   fill: (b: Barangay) => string
   outlined?: Set<string>
   points?: MapPoint[]
-  selected?: string | null
   onHover?: (psgc: string | null) => void
   className?: string
-  label: string
 }) {
-  const { xy, height, paths } = useMemo(() => {
-    const { xy, height } = project(features)
-    const paths = features.map((f) => ({
-      b: f.properties,
-      d: f.geometry.coordinates
-        .map((ring) => `M${ring.map(([x, y]) => xy(x, y).map((v) => v.toFixed(1)).join(",")).join("L")}Z`)
-        .join(""),
-    }))
-    return { xy, height, paths }
-  }, [features])
+  const [offline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine)
+  const initialBounds = useMemo(() => bounds(features), [features])
+  const filled = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: features.map((f) => ({ ...f, properties: { ...f.properties, color: fill(f.properties) } })),
+    }),
+    [features, fill],
+  )
+  const outlines = useMemo(
+    () => ({ type: "FeatureCollection" as const, features: features.filter((f) => outlined?.has(f.properties.psgc)) }),
+    [features, outlined],
+  )
 
   return (
-    <svg
-      viewBox={`0 0 ${WIDTH} ${height.toFixed(0)}`}
-      role="img"
-      aria-label={label}
-      className={cn("h-auto w-full", className)}
-      onMouseLeave={() => onHover?.(null)}
-    >
-      {paths.map(({ b, d }) => (
-        <path
-          key={b.psgc}
-          d={d}
-          fill={fill(b)}
-          className={cn(
-            "stroke-background transition-[fill] duration-300",
-            onHover && "cursor-pointer hover:opacity-80",
-            selected === b.psgc && "stroke-foreground",
-          )}
-          strokeWidth={selected === b.psgc ? 3 : 1}
-          onMouseEnter={() => onHover?.(b.psgc)}
-          onClick={() => onHover?.(b.psgc)}
-        >
-          <title>{b.name}</title>
-        </path>
-      ))}
-      {outlined &&
-        paths
-          .filter(({ b }) => outlined.has(b.psgc))
-          .map(({ b, d }) => (
-            <path key={b.psgc} d={d} fill="none" className="pointer-events-none stroke-destructive" strokeWidth={4} />
-          ))}
-      {points.map((p) => {
-        const [cx, cy] = xy(p.lon, p.lat)
-        return (
-          <circle
-            key={p.id}
-            cx={cx}
-            cy={cy}
-            r={p.r ?? 6}
-            className={cn("pointer-events-none fill-foreground stroke-background", p.className)}
-            strokeWidth={1.5}
-          />
-        )
-      })}
-    </svg>
+    <div className={cn("relative h-96 w-full overflow-hidden rounded-md border", className)}>
+      <Map bounds={initialBounds} fitBoundsOptions={{ padding: 16 }} blank={offline} cooperativeGestures>
+        <Polygons filled={filled} outlines={outlines} onHover={onHover} />
+        {points.map((p) => (
+          <MapMarker key={p.id} longitude={p.lon} latitude={p.lat}>
+            <MarkerContent>
+              <span
+                className={cn("block rounded-full border border-background bg-foreground", p.className)}
+                style={{ width: (p.r ?? 6) * 2, height: (p.r ?? 6) * 2 }}
+              />
+            </MarkerContent>
+          </MapMarker>
+        ))}
+        <MapControls showZoom />
+      </Map>
+    </div>
   )
 }
