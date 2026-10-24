@@ -90,3 +90,23 @@ Iloilo City (`PH063022000`) polygons in EPSG:4326. Simplified at 1e-4° (~11 m) 
 | `bldg_density` | float | buildings/km² | | `google_open_buildings` |
 
 CCHAIN caps distances at 10,000 m, so 10,000 means "10 km or more".
+
+## `facilities.geojson`
+
+OpenStreetMap health facilities inside Iloilo City, as points in EPSG:4326 (5 decimals). Built by `lunop/osm.py` from one Overpass pull cached in `data/external/osm_iloilo.json`. Context only, never scored.
+
+| Property | Type | Definition |
+|---|---|---|
+| `name` | str | OSM `name`; unnamed features are dropped, one feature per kind and name |
+| `kind` | str | `hospital` (`amenity` or `healthcare` = hospital, excluding veterinary), `health_center` (name contains "District Health Center"), `bhs` (`amenity=health_post`, or name contains "Barangay Health" / "Health Station") |
+
+The top-level `nearest` member maps each barangay `psgc` to `{name, kind, dist_m}`: the facility nearest the barangay's centroid, straight-line metres rounded to 10, measured in UTM 51N. OSM maps only about 18 of the city's barangay health stations, so a farther facility can show where an unmapped BHS is closer.
+
+## `waterways.geojson`
+
+OpenStreetMap waterways clipped to Iloilo City, as lines in EPSG:4326, simplified at 1e-4°.
+
+| Property | Type | Definition |
+|---|---|---|
+| `name` | str \| null | OSM `name` |
+| `kind` | str | `river`, `stream`, `canal` or `drain` (the kinds behind `water_dist_m`) |
