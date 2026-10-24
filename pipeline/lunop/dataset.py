@@ -198,12 +198,20 @@ def events(d: pd.DataFrame) -> pd.DataFrame:
 
 
 def hazard() -> pd.DataFrame:
-    """NOAH 25-yr flood hazard (% of barangay area), 2015 snapshot. hazard_pct = medium + high."""
+    """NOAH flood hazard (% of barangay area), 2015 snapshot.
+
+    hazard_pct = 100-yr low + medium + high, for ranking. hazard_high_pct = 100-yr high (deep water,
+    where people wade), for sizing exposure; the any-level share puts 42% of Iloilo in a flood area.
+    The 25-yr layer is near zero across Iloilo City (5 of
+    180 barangays) and, net of population, shows no link to Zamboanga's case rate; hazard_25yr
+    (medium + high) is kept for that comparison.
+    """
     n = read_raw("project_noah_hazards").set_index("adm4_pcode")
-    h = pd.DataFrame({"hazard_25yr_med": n.pct_area_flood_hazard_25yr_med, "hazard_25yr_high": n.pct_area_flood_hazard_25yr_high})
-    check(h.notna().all().all() and h.ge(0).all().all(), "noah: missing or negative hazard")
-    h["hazard_pct"] = (h.hazard_25yr_med + h.hazard_25yr_high).clip(upper=100)
-    return h
+    cols = [f"pct_area_flood_hazard_{y}_{lv}" for y in ("25yr", "100yr") for lv in ("low", "med", "high")]
+    check(n[cols].notna().all().all() and n[cols].ge(0).all().all(), "noah: missing or negative hazard")
+    f = lambda y, *lv: sum(n[f"pct_area_flood_hazard_{y}_{x}"] for x in lv).clip(upper=100)
+    return pd.DataFrame({"hazard_pct": f("100yr", "low", "med", "high"), "hazard_high_pct": f("100yr", "high"),
+                         "hazard_25yr": f("25yr", "med", "high")})
 
 
 def population(start: int, end: int) -> pd.Series:
@@ -248,7 +256,8 @@ def barangays(loc: pd.DataFrame, city_psgc: str = ILOILO_PSGC) -> gpd.GeoDataFra
     """One city's barangay polygons with the static attributes the web app shows.
 
     - pop: WorldPop 2020 (the latest year)
-    - hazard_pct: NOAH 25-yr medium + high flood hazard, % of area
+    - hazard_pct: NOAH 100-yr flood hazard, any level, % of area
+    - hazard_high_pct: NOAH 100-yr high flood hazard, % of area
     - access30_pct: % of population within 30 min of a hospital (Mapbox isochrones)
     - hospital_dist_m: distance to the nearest DOH hospital; travel_min: see travel_min()
     - water_dist_m: distance to the nearest river, stream, canal or drain (OSM, latest year)
@@ -262,13 +271,13 @@ def barangays(loc: pd.DataFrame, city_psgc: str = ILOILO_PSGC) -> gpd.GeoDataFra
     osm = read_raw("osm_poi_water_body", parse_dates=["date"])
     osm = osm[osm.date == osm.date.max()].set_index("adm4_pcode")
     bldg = read_raw("google_open_buildings").set_index("adm4_pcode")
-    b = b.join(population(2020, 2020).round().astype("Int64")).join(hazard().hazard_pct)
+    b = b.join(population(2020, 2020).round().astype("Int64")).join(hazard()[["hazard_pct", "hazard_high_pct"]])
     b["access30_pct"] = iso.hospital_pop_reached_pct_30min
     b["travel_min"] = travel_min(iso).astype("Int64")
     b["hospital_dist_m"] = doh.doh_hospital_nearest
     b["water_dist_m"] = osm[WATER].min(axis=1)
     b["bldg_density"] = bldg.google_bldgs_density * 1e6
-    cols = ["hazard_pct", "access30_pct", "hospital_dist_m", "water_dist_m", "bldg_density"]
+    cols = ["hazard_pct", "hazard_high_pct", "access30_pct", "hospital_dist_m", "water_dist_m", "bldg_density"]
     check(b.drop(columns="travel_min").notna().all().all(), "barangays: missing attribute")
     b[cols] = b[cols].round(1)
     geom = shapely.make_valid(shapely.from_wkt(geo.reindex(b.index)))

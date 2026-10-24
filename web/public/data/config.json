@@ -52,6 +52,6 @@
     "geohash_precision": 7,
     "min_dates": 3,
     "window_days": 365,
-    "seed_min_hazard_pct": 1
+    "seed_min_hazard_pct": 90
   }
 }

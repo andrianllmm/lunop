@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { config } from "@/lib/config"
 import type { Countdown } from "@/lib/countdown"
 import { rankBarangays } from "@/lib/priority"
 import { recommend, type RecommendationId } from "@/lib/recommend"
@@ -10,7 +11,7 @@ import type { Level } from "@/lib/types"
 const now = new Date("2026-10-24T12:00:00+08:00")
 const barangays = [
   ...Array.from({ length: 12 }, (_, i) =>
-    barangay(`H${String(i).padStart(2, "0")}`, { pop: 1000 + i * 100, hazard_pct: 10, access30_pct: i === 10 ? 20 : 100 }),
+    barangay(`H${String(i).padStart(2, "0")}`, { pop: 1000 + i * 100, hazard_pct: 10, hazard_high_pct: 10, access30_pct: i === 10 ? 20 : 100 }),
   ),
   barangay("Z", { hazard_pct: 0 }),
 ]
@@ -22,6 +23,9 @@ const countdown: Countdown = {
   reason: "corroborated",
 }
 
+/** Seed every barangay with hazard, so the fixture's 10% counts. */
+const seedCfg = { ...config, spots: { ...config.spots, seed_min_hazard_pct: 1 } }
+
 /** Rain peak date `d` days before now. */
 const peak = (d: number) => new Date(Date.parse("2026-10-24T00:00:00Z") - d * 86_400_000).toISOString().slice(0, 10)
 
@@ -30,7 +34,7 @@ function run(level: Level, d: number | null, opts: { countdown?: boolean; spots?
     forecast: forecast(level, d === null ? null : peak(d)),
     ranked,
     countdowns: new Map(opts.countdown ? [["Z", countdown]] : []),
-    spots: opts.spots ? seedSpots(barangays) : [],
+    spots: opts.spots ? seedSpots(barangays, seedCfg) : [],
     now,
   })
 }

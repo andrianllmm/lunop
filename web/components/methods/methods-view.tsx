@@ -483,14 +483,15 @@ function BacktestTable({ lines }: { lines: BacktestLine[] }) {
   )
 }
 
-const ZAMBOANGA: [keyof Pick<Performance["zamboanga"], "hazard_pct" | "hazard_25yr_med" | "hazard_25yr_high" | "score">, string][] = [
+const ZAMBOANGA: [Exclude<keyof Performance["zamboanga"], "barangays" | "cases">, string][] = [
   ["score", "Our priority score"],
   ["hazard_pct", "Share of barangay that floods"],
-  ["hazard_25yr_med", "Medium flood-hazard areas"],
-  ["hazard_25yr_high", "High flood-hazard areas"],
+  ["hazard_pct_net_pop", "Same, after accounting for population"],
+  ["pop", "Population alone"],
+  ["hazard_25yr_net_pop", "Old flood map, after accounting for population"],
 ]
 const RHO_MIN = -0.4
-const RHO_MAX = 0.6
+const RHO_MAX = 0.8
 const rhoX = (v: number) => `${((v - RHO_MIN) / (RHO_MAX - RHO_MIN)) * 100}%`
 
 function Zamboanga({ perf }: { perf: Performance }) {
@@ -507,7 +508,7 @@ function Zamboanga({ perf }: { perf: Performance }) {
           ))}
         </ul>
         <p className="text-xs text-muted-foreground">
-          0 = no link, 1 = perfect. Dot = result, bar = likely range; a bar fully right of 0 is a real link. Ours: weak but real.
+          0 = no link, 1 = perfect. Dot = result, bar = likely range; a bar fully right of 0 is a real link. Flood share still matters once population is accounted for; the old map did not.
         </p>
       </CardContent>
     </Card>
@@ -601,7 +602,7 @@ function Limitations({ perf }: { perf: Performance }) {
                 "Gains come from big events",
                 `On a typical event, a normal-week guess was slightly better (miss ${median.seasonal["1"].toFixed(1)} vs ${median.with_cases["1"].toFixed(1)}).`,
               ],
-              ["Ranking tested in one city", `Zamboanga only, with a weak link (${fixed2(perf.zamboanga.hazard_pct.rho)}).`],
+              ["Ranking tested in one city", `Zamboanga only, with a moderate link (${fixed2(perf.zamboanga.hazard_pct_net_pop.rho)} after accounting for population).`],
             ]}
           />
           <Points
