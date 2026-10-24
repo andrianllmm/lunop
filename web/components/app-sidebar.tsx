@@ -30,8 +30,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/" onClick={() => setOpenMobile(false)}>
-                <Logo className="size-8 shrink-0" />
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <Logo className="size-8!" />
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold">LUNOP</span>
                   <span className="truncate text-xs text-muted-foreground">
                     Leptospirosis early warning
