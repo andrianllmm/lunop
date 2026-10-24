@@ -57,7 +57,7 @@ pjdsc-26/
 │   ├── reports/             backtest.md, figures
 │   └── pyproject.toml
 ├── web/
-│   ├── app/                 (dashboard)/{page, replay, barangays, report, methods}
+│   ├── app/                 (dashboard)/{page, replay, priority, report, methods}
 │   ├── app/api/reports/     route.ts (GET, POST)
 │   ├── lib/                 priority.ts, recommend.ts, spots.ts, db.ts
 │   └── public/data/         forecast.json, barangays.geojson, performance.json,
@@ -276,7 +276,7 @@ Sidebar dashboard, with every page usable on a phone.
 |---|---|
 | `/` Overview | Alert banner and data date; surge chart (expected, 80% band, baseline); priority map; **one decision card** (current-phase recommendation); past performance |
 | `/replay` | Event picker (3 events); daily rain animation on the map; forecast vs actual chart; decision card evolving by day; simulated reports labelled |
-| `/barangays` | Ranked table (priority, pop, hazard, reports, dose range, access flag); detail panel; **Chronic flood spots** tab |
+| `/priority` Priority areas | Ranked table (priority, pop, hazard, reports, dose range, access flag); detail panel; **Chronic flood spots** tab |
 | `/report` | Mobile-first form in English and Filipino, using GPS with a barangay dropdown fallback |
 | `/methods` | Event study, LOEO table, back-test vs baselines, rain check, Zamboanga ρ with CI, dropped features and why, limitations |
 

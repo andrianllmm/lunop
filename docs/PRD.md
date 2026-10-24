@@ -69,9 +69,9 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 
 | Persona | Need | Main page |
 |---|---|---|
-| **CHO epidemiologist / health officer** (primary) | Decide where to send prophylaxis and health workers, and when to alert hospitals | Overview, Barangays |
-| **Barangay health worker / BDRRM officer** | Report flooding; know if their barangay is a priority | Report, Barangays |
-| **City engineering / DRRMO** | Know which spots flood every storm | Barangays → Chronic flood spots |
+| **CHO epidemiologist / health officer** (primary) | Decide where to send prophylaxis and health workers, and when to alert hospitals | Overview, Priority areas |
+| **Barangay health worker / BDRRM officer** | Report flooding; know if their barangay is a priority | Report, Priority areas |
+| **City engineering / DRRMO** | Know which spots flood every storm | Priority areas → Chronic flood spots |
 | **Hospital administrator** | Know when admissions peak and how many | Overview |
 | **Resident** (secondary) | Report flooding | Report |
 
@@ -86,7 +86,7 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 
 ## 6. Features
 
-The app is a dashboard with a sidebar: **Overview, Replay, Barangays, Report, Methods & Validation**. It has six features. Each one is built to be polished rather than broad.
+The app is a dashboard with a sidebar: **Overview, Replay, Priority areas, Report, Methods & Validation**. It has six features. Each one is built to be polished rather than broad.
 
 ### F1. Surge forecast (Overview)
 - Expected weekly cases for weeks +1 to +4 with an 80% interval, against the seasonal baseline.
@@ -96,7 +96,7 @@ The app is a dashboard with a sidebar: **Overview, Replay, Barangays, Report, Me
 - Past performance (hit rate, false alarms) shown next to the alert.
 - **Acceptance:** shows the data date; loads in under 2 s; keeps working on the last good forecast if the daily update fails.
 
-### F2. Barangay priority (Overview map, Barangays page)
+### F2. Barangay priority (Overview map, Priority areas page)
 - Map and ranked table of all 180 barangays, labelled **"estimated exposure"**.
 - Score = flood hazard (NOAH, 25-yr medium/high share) × population, raised by recent community reports, scaled by the city surge.
 - Detail panel: score breakdown, population, hazard share, recent reports, nearest hospital and travel time, recommended actions.
