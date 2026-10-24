@@ -12,7 +12,7 @@ export default function OfflinePage() {
         This page isn&apos;t saved on this device. Open it again when you have signal.
       </p>
       <Link href="/" className="text-sm font-medium underline underline-offset-4">
-        Go to Overview
+        Go to home page
       </Link>
     </main>
   )
