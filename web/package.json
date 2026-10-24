@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "worker": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/",
+    "predev": "npm run worker",
     "dev": "next dev",
+    "prebuild": "npm run worker",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -13,6 +16,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
     "lucide-react": "^1.61.0",
+    "maplibre-gl": "^6.15.0",
     "next": "16.4.3",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.8.1",
@@ -25,6 +29,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
