@@ -17,6 +17,7 @@ WEB_DATA = ROOT / "web" / "public" / "data"  # static JSON served by the app
 ILOILO = "Iloilo City"
 ILOILO_PSGC = "PH063022000"
 ZAMBOANGA = "Zamboanga City"
+ZAMBOANGA_BRGY_SOURCE = "Zamboanga_PIDSR_2013-2022"  # the only usable barangay case file
 
 SEED = 42
 RAIN_LAGS = range(9)  # weeks 0..8

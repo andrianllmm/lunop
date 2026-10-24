@@ -78,3 +78,11 @@ def test_built_events():
     e = pd.read_parquet(PROCESSED / "events.parquet")
     assert e.event_id.is_unique
     assert (e.city == "Iloilo City").sum() == 16  # TRD 5.4
+
+
+@built
+def test_built_zamboanga_brgy():
+    b = pd.read_parquet(PROCESSED / "zamboanga_brgy.parquet")
+    assert len(b) == 101 and b.psgc.is_unique
+    assert b.cases.sum() == 328  # FINDINGS.md
+    assert b.hazard_pct.between(0, 100).all()

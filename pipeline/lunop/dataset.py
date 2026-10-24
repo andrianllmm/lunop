@@ -11,7 +11,10 @@ from urllib.request import urlretrieve
 import numpy as np
 import pandas as pd
 
-from lunop.config import CLIM_START_YEAR, EVENT_QUANTILE, EVENT_WINDOW, INTERIM, LEVEL_WEEKS, PIPELINE, PROCESSED, RAW, TRAIN_END_YEAR
+from lunop.config import (
+    CLIM_START_YEAR, EVENT_QUANTILE, EVENT_WINDOW, INTERIM, LEVEL_WEEKS, PIPELINE, PROCESSED, RAW, TRAIN_END_YEAR,
+    ZAMBOANGA, ZAMBOANGA_BRGY_SOURCE,
+)
 
 CHECKSUMS = PIPELINE / "raw.sha256"  # sha256sum format; pins the exact HDX snapshot
 
@@ -192,6 +195,42 @@ def events(d: pd.DataFrame) -> pd.DataFrame:
     return e
 
 
+def hazard() -> pd.DataFrame:
+    """NOAH 25-yr flood hazard (% of barangay area), 2015 snapshot. hazard_pct = medium + high."""
+    n = read_raw("project_noah_hazards").set_index("adm4_pcode")
+    h = pd.DataFrame({"hazard_25yr_med": n.pct_area_flood_hazard_25yr_med, "hazard_25yr_high": n.pct_area_flood_hazard_25yr_high})
+    check(h.notna().all().all() and h.ge(0).all().all(), "noah: missing or negative hazard")
+    h["hazard_pct"] = (h.hazard_25yr_med + h.hazard_25yr_high).clip(upper=100)
+    return h
+
+
+def population(start: int, end: int) -> pd.Series:
+    """Mean WorldPop barangay population over start..end (WorldPop ends 2020)."""
+    w = read_raw("worldpop_population", parse_dates=["date"])
+    check(not w.duplicated(["adm4_pcode", "date"]).any(), "worldpop: duplicate barangay-years")
+    check(w.date.dt.year.max() >= end, f"worldpop: no data for {end}")
+    return w[w.date.dt.year.between(start, end)].groupby("adm4_pcode").pop_count_total.mean().rename("pop")
+
+
+def zamboanga_brgy(loc: pd.DataFrame) -> pd.DataFrame:
+    """Zamboanga barangays: leptospirosis cases 2013-2022, population, hazard and case rate.
+
+    Barangays with no recorded case get 0. Population is the 2013-2020 mean, since WorldPop ends
+    in 2020. rate = cases per 100k people per year.
+    """
+    lgu = read_raw("disease_lgu_disaggregated_totals", parse_dates=["date"])
+    z = lgu[(lgu.disease_common_name == "LEPTOSPIROSIS") & (lgu.source_filename == ZAMBOANGA_BRGY_SOURCE)]
+    check(z.adm4_pcode.notna().all(), "zamboanga: case with no barangay")
+    b = loc[loc.city == ZAMBOANGA].set_index("psgc")[["name", "area_km2"]]
+    check(z.adm4_pcode.isin(b.index).all(), "zamboanga: barangay outside the city")
+    years = z.date.dt.year
+    b["cases"] = z.groupby("adm4_pcode").case_total.sum().reindex(b.index, fill_value=0).astype(int)
+    b = b.join(population(years.min(), 2020)).join(hazard())
+    check(b["pop"].gt(0).all(), "zamboanga: barangay with no population")
+    b["rate"] = b.cases / b["pop"] * 1e5 / (years.max() - years.min() + 1)
+    return b.rename_axis("psgc").reset_index().sort_values("psgc", ignore_index=True)
+
+
 def build() -> None:
     """Raw CCHAIN -> data/processed/ and web/public/data/barangays.geojson.
 
@@ -207,6 +246,7 @@ def build() -> None:
     check_panel(d, cases)
     save(d, PROCESSED / "panel.parquet")
     save(events(d), PROCESSED / "events.parquet")
+    save(zamboanga_brgy(loc), PROCESSED / "zamboanga_brgy.parquet")
 
 
 def main() -> None:
