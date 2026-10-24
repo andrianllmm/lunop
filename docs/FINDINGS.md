@@ -1,6 +1,6 @@
 # Findings
 
-What the data says, what it means for LUNOP, and what's still open. Source: the EDA notebooks in [`eda/`](../eda/) (CCHAIN, 12 cities, 2008–2022). Update this file when a notebook's conclusion changes.
+What the data says, what it means for LUNOP, and what's still open. Source: the EDA notebooks in [`eda/`](../eda/) (CCHAIN, 12 cities, 2008–2022). Update this file when a notebook's conclusion changes. Citations: [REFERENCES.md](REFERENCES.md).
 
 ## Data
 

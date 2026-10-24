@@ -19,9 +19,9 @@ Over many storms, residents' reports also build a list of **chronic flood spots*
 
 ## 2. Problem
 
-- Leptospirosis follows floods with a predictable delay. Admissions peak about 2 weeks after heavy rain, and flooding is the step through which rain leads to infection (Matsushita et al., 2018).
+- Leptospirosis follows floods with a predictable delay. Admissions peak about 2 weeks after heavy rain, and flooding is the step through which rain leads to infection (Matsushita et al., 2018). Contact with floodwater roughly doubles the odds of infection (pooled OR 2.19; Naing et al., 2019), and higher rainfall goes with higher incidence across settings (Ataupah et al., 2026).
 - The chain is **rain → flooding at a place → people forced to wade (*lusob*) → infection → cases 2–3 weeks later.** Weather alone describes only the first link.
-- The Philippine response is reactive. Code White alerts are national and qualitative. Prophylaxis goes to "high-risk persons in flood-affected areas" with no way to choose which ones. PIDSR confirms outbreaks only after people are sick (Labana, 2026).
+- The Philippine response is reactive. Code White alerts are national and qualitative. Prophylaxis goes to "high-risk persons in flood-affected areas" with no way to choose which ones. PIDSR confirms outbreaks only after people are sick (Labana, 2026; National Epidemiology Center, 2014). Responses stay largely hospital-based and reactive (Interior et al., 2025).
 - We found no operational system that turns "this much rain fell" into "expect this many cases, in these barangays, by this date; do this now". The closest ones we found are research models and proposals.
 - The problem is local and recurring. Iloilo City reported the most leptospirosis cases of the 12 CCHAIN cities: 3,948 of 8,034 PIDSR cases (49%) from 2008 to 2022.
 
@@ -40,7 +40,7 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 | River discharge (GloFAS, Iloilo, earlier analysis) | Correlates 0.6 with rain; adds about 1% on top of rain. **Tested and dropped** |
 | Barangay flood hazard vs case rate (Zamboanga) | Spearman **0.52 (95% CI 0.37–0.66)** for the 100-yr hazard share; 0.37 after controlling for population |
 | Barangay infrastructure features (Zamboanga, Cagayan de Oro, earlier analysis) | Signs **flip between cities**; better hospital access goes with *more* recorded cases. This is **detection bias**: barangay counts show where cases get recorded, not where people get infected |
-| Who gets infected (Zamboanga) | Mostly **men aged 20–49** |
+| Who gets infected (Zamboanga) | Mostly **men aged 20–49**, matching the global pattern (Costa et al., 2015) |
 | Season | Cases peak August–November; Iloilo peaks in **October** |
 
 ### What the evidence supports
@@ -201,7 +201,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 
 ## 11. Open questions
 
-- Current DOH prophylaxis guideline: exposure tiers, child dosing, exclusions.
+- Current DOH prophylaxis guideline: exposure tiers, child dosing, exclusions. The latest we found is PhilHealth's summary of the 2010 clinical practice guideline (doxycycline 200 mg weekly pre-exposure; post-exposure doxycycline, duration by exposure; Philippine Health Insurance Corporation, n.d.).
 - A CHO contact for expert review and recent case data.
 - Does PIDSR's week mean symptom onset or reporting date? It changes how the lag is read.
 - Does the Iloilo 3-week loss hold on post-storm weeks, and does an Iloilo-specific rain term fix it?
@@ -209,6 +209,4 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 
 ## References
 
-- Labana, R. V. (2026). Rethinking leptospirosis prevention, the Philippines. *Emerging Infectious Diseases, 32*(3), 397. https://doi.org/10.3201/eid3203.251250
-- Matsushita, N., Ng, C. F. S., Kim, Y., Suzuki, M., Saito, N., Ariyoshi, K., Salva, E. P., Dimaano, E. M., Villarama, J. B., Go, W. S., & Hashizume, M. (2018). The non-linear and lagged short-term relationship between rainfall and leptospirosis and the intermediate role of floods in the Philippines. *PLOS Neglected Tropical Diseases, 12*(4), e0006331. https://doi.org/10.1371/journal.pntd.0006331
-- Thinking Machines Data Science. (2024). *Project CCHAIN* [Data set]. Humanitarian Data Exchange. https://data.humdata.org/dataset/project-cchain
+See [REFERENCES.md](REFERENCES.md) (APA 7).

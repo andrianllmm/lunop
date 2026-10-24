@@ -34,15 +34,15 @@ decision engine runs on cached data when offline
 
 | Layer | Choice |
 |---|---|
-| Offline model | Python 3.11, pandas, statsmodels, geopandas, managed with `uv` |
-| Web | Next.js (App Router), TypeScript, MapLibre GL via [mapcn](https://mapcn.dev) (MIT, shadcn registry), Recharts, Tailwind + shadcn/ui |
+| Offline model | Python 3.11, pandas (McKinney, 2010), statsmodels (Seabold & Perktold, 2010), geopandas (Fleischmann et al., 2026), managed with `uv` |
+| Web | Next.js (App Router; Vercel, 2026), TypeScript, MapLibre GL (MapLibre, n.d.) via [mapcn](https://mapcn.dev) (MIT, shadcn registry), Recharts, Tailwind + shadcn/ui |
 | DB | Neon Postgres via the Vercel integration; `@neondatabase/serverless` with plain SQL |
 | Geometry in TS | `@turf/boolean-point-in-polygon` (GPS → barangay) |
 | PWA | Serwist (`@serwist/next`) service worker; `app/manifest.ts` |
 | Offline storage | IndexedDB via `idb-keyval` (report outbox) |
 | Daily job | GitHub Actions cron |
 | Deploy | Vercel (project root `web/`) |
-| Basemap | OpenFreeMap `positron` (light) and `dark`: no API key, no usage limits. Not mapcn's default CARTO tiles, which have usage terms |
+| Basemap | OpenFreeMap `positron` (light) and `dark` (OpenFreeMap, n.d.): no API key, no usage limits. Not mapcn's default CARTO tiles, which have usage terms |
 
 ## 3. Repository layout
 
@@ -87,18 +87,20 @@ A monorepo: `pipeline/` (Python) and `web/` (Next.js) are separate projects. `pi
 
 ## 4. Data
 
+All CCHAIN tables: Thinking Machines Data Science (2024). Full citations: [REFERENCES.md](REFERENCES.md).
+
 | Data | Source | Granularity | Use |
 |---|---|---|---|
-| Leptospirosis cases | CCHAIN `disease_pidsr_totals` | City × week, 12 cities, 2008–2022 | Training, back-test, replay |
+| Leptospirosis cases | CCHAIN `disease_pidsr_totals` (PIDSR; National Epidemiology Center, 2014) | City × week, 12 cities, 2008–2022 | Training, back-test, replay |
 | Barangay cases | CCHAIN `disease_lgu_disaggregated_totals` | Barangay × week (only Zamboanga usable, 2013–2022) | Ranking check only |
 | Rain (history) | CCHAIN `climate_atmosphere.pr` | Barangay × day, 2003–2022 | Training, replay |
-| Rain (live) | Open-Meteo forecast + archive APIs | Point × day | Live forecast |
-| Flood hazard | CCHAIN `project_noah_hazards` | Barangay; 100-yr low/med/high % area | Exposure |
-| Population | CCHAIN `worldpop_population` | Barangay × year, to 2020 (later years reuse 2020) | Exposure, doses |
+| Rain (live) | Open-Meteo forecast + archive APIs (Zippenfenig, 2024) | Point × day | Live forecast |
+| Flood hazard | CCHAIN `project_noah_hazards` (Project NOAH; Lagmay et al., 2017) | Barangay; 100-yr low/med/high % area | Exposure |
+| Population | CCHAIN `worldpop_population` (WorldPop & CIESIN, 2018) | Barangay × year, to 2020 (later years reuse 2020) | Exposure, doses |
 | Boundaries | CCHAIN `brgy_geography` | Barangay polygons | Map, GPS lookup |
 | Hospital access | CCHAIN `geoportal_doh_poi_health`, `mapbox_health_facility_brgy_isochrones` | Barangay | Access column and flag |
 | Infrastructure context | CCHAIN `osm_poi_water_body`, `google_open_buildings` | Barangay | Chronic-spot context (not scored) |
-| Facilities, waterways | OpenStreetMap (Overpass), fetched once | Point / line | Map context layers, nearest facility (not scored) |
+| Facilities, waterways | OpenStreetMap (Overpass), fetched once (OpenStreetMap contributors, 2026) | Point / line | Map context layers, nearest facility (not scored) |
 | Flood reports | `POST /api/reports` | Point × time | Exposure, corroboration, chronic spots |
 
 Iloilo City is PSGC `PH063022000`, with 180 barangays.
@@ -121,7 +123,7 @@ Iloilo City is PSGC `PH063022000`, with 180 barangays.
 
 ### 5.1 Specification
 
-A **negative binomial GLM** fitted on all 12 cities together. It was chosen over tree ensembles because the data is small, mostly zeros and has rare large outbreaks. In our earlier dengue work, random forest and XGBoost did no better than repeating last week. A GLM also gives an explainable lag curve that can be compared with the literature.
+A **negative binomial GLM** (Hilbe, 2011) fitted on all 12 cities together, with rain as an unconstrained distributed lag: one log(1 + rain) term per week, lags 0–8 (the general framework is in Gasparrini et al., 2010). It was chosen over tree ensembles because the data is small, mostly zeros and has rare large outbreaks. In our earlier dengue work, random forest and XGBoost did no better than repeating last week. A GLM also gives an explainable lag curve that can be compared with the literature.
 
 ```
 cases[c, t+h] ~ NegBin(μ, α)
@@ -179,7 +181,7 @@ Applied to the maximum `ratio` over weeks +1 to +4. Thresholds are tuned per var
 - Alert hit rate and false-alarm rate.
 
 **Secondary**
-- All-weeks Poisson deviance and MAE on 2018–2022, per horizon, for all cities and for Iloilo, reporting the Iloilo h = 3 loss openly. EDA baseline: ~9–11% gain across cities; Iloilo +9%, +4%, −10% at h = 1–3.
+- All-weeks Poisson deviance and MAE on 2018–2022, per horizon (deviance is a proper score for count forecasts; Czado et al., 2009; Gneiting & Raftery, 2007), for all cities and for Iloilo, reporting the Iloilo h = 3 loss openly. EDA baseline: ~9–11% gain across cities; Iloilo +9%, +4%, −10% at h = 1–3.
 - Ablations: without rain (`cases`); training from 2008, with and without the Sendong-era weeks (CDO, Iloilo 2011–12); an Iloilo-specific rain slope; `rain_only` fed Open-Meteo rain.
 - Event-study curve: cases ÷ seasonal norm at weeks −2 to +6 after heavy rain.
 
