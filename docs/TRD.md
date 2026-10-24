@@ -326,6 +326,7 @@ Two route groups, with every page usable on a phone:
 | `/dashboard` Overview | Alert banner and data date; surge chart (expected, 80% band, baseline); priority map; **one decision card** (current-phase recommendation); past performance |
 | `/replay` | Event picker (3 events); daily rain animation on the map; forecast vs actual chart; decision card evolving by day; simulated reports labelled |
 | `/priority` Priority areas | Ranked table (priority, pop, hazard, reports, dose range, access flag); detail panel with nearest health facility; toggleable facility pins (hospital / health center / BHS); **Chronic flood spots** tab with waterway lines |
+| `/reports` Flood reports | Map of `GET /api/reports` pins sized by depth (24 h / 7 d / 1 yr, default 7 d); pins marked when they feed a countdown or repeat flood spot; tap a pin for its report in a popup (depth, duration, waded, barangay, time). No `ip_hash` or `client_id` shown |
 | `/report` (public) | Mobile-first form in English and Filipino, using GPS with a barangay dropdown fallback |
 | `/methods` | Event study, LOEO table, back-test vs baselines, rain check, Zamboanga ρ with CI, dropped features and why, limitations |
 

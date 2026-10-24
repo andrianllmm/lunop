@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react"
 
-import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, MarkerTooltip, useMap } from "@/components/ui/map"
+import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, MarkerPopup, MarkerTooltip, useMap } from "@/components/ui/map"
 import type { Barangay } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -23,6 +23,9 @@ export type MapPoint = {
   icon?: ReactNode
   /** Shown on hover. */
   label?: string
+  onClick?: () => void
+  /** Card opened by tapping the pin. */
+  popup?: ReactNode
 }
 
 /** Red for outlines; MapLibre paint can't read CSS variables. */
@@ -173,7 +176,7 @@ export function BarangayMap({
         <Polygons filled={filled} outlines={outlines} selected={highlight} onHover={onHover} onSelect={onSelect} />
         {lines && <Lines data={lines} />}
         {points.map((p) => (
-          <MapMarker key={p.id} longitude={p.lon} latitude={p.lat}>
+          <MapMarker key={p.id} longitude={p.lon} latitude={p.lat} onClick={p.onClick}>
             <MarkerContent>
               <span
                 className={cn(
@@ -186,6 +189,11 @@ export function BarangayMap({
               </span>
             </MarkerContent>
             {p.label && <MarkerTooltip>{p.label}</MarkerTooltip>}
+            {p.popup && (
+              <MarkerPopup closeButton offset={(p.r ?? 6) + 8} className="w-64 max-w-none">
+                {p.popup}
+              </MarkerPopup>
+            )}
           </MapMarker>
         ))}
         <MapControls showZoom />
