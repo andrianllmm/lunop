@@ -4,11 +4,20 @@ export const HORIZONS = [1, 2, 3, 4] as const
 
 /** Deployed variants and their baselines, in table order (TRD §5.1). */
 export const MAIN_MODELS: Record<string, string> = {
-  seasonal: "Usual for the week (seasonal)",
-  "seasonal + recent cases": "Seasonal + recent cases",
-  with_cases: "Rain + recent cases (replay)",
-  rain_only: "Rain only (live)",
-  "rain_only, Open-Meteo rain": "Rain only, on live rain source",
+  seasonal: "Assume a normal week (baseline)",
+  "seasonal + recent cases": "Normal week + last 2 weeks' cases",
+  with_cases: "LUNOP with recent cases (used in Replay)",
+  rain_only: "LUNOP live forecast (rain only)",
+  "rain_only, Open-Meteo rain": "LUNOP live forecast, on live rain data",
+}
+
+/** Plain names for the variants tried and not deployed. */
+const ABLATIONS: Record<string, string> = {
+  "seasonal, from 2008": "Normal week, trained from 2008",
+  "with_cases, from 2008": "With recent cases, trained from 2008",
+  "with_cases, from 2008, no Sendong-era weeks": "With recent cases, from 2008, without the 2011–12 outbreak",
+  "rain_only, from 2008": "Live forecast, trained from 2008",
+  "with_cases + Iloilo rain slope": "With recent cases + a rain effect just for Iloilo",
 }
 
 export type BacktestScope = "iloilo" | "all"
@@ -35,7 +44,7 @@ export function backtestTable(rows: BacktestRow[], scope: BacktestScope, metric:
       const v = values[i]
       return model === "seasonal" || v === null || !base ? null : v / base - 1
     })
-    return { model, label: MAIN_MODELS[model] ?? model, values, change }
+    return { model, label: MAIN_MODELS[model] ?? ABLATIONS[model] ?? model, values, change }
   }
 
   const models = [...new Set(rows.map((r) => r.model))]

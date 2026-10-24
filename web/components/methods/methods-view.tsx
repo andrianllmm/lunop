@@ -28,6 +28,17 @@ const times = (x: number) => `${x.toFixed(1)}×`
 const fixed2 = (x: number) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2)
 const ILOILO = "Iloilo City"
 
+/** Method name as a small label, then the question the section answers. */
+function SectionHeader({ method, title, children }: { method: string; title: string; children: React.ReactNode }) {
+  return (
+    <CardHeader>
+      <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{method}</span>
+      <CardTitle>{title}</CardTitle>
+      <CardDescription>{children}</CardDescription>
+    </CardHeader>
+  )
+}
+
 export function MethodsView() {
   const [perf, setPerf] = useState<Performance | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +52,7 @@ export function MethodsView() {
   if (error) {
     return (
       <Alert variant="destructive">
-        <AlertTitle>Couldn&apos;t load the validation results</AlertTitle>
+        <AlertTitle>Couldn&apos;t load the test results</AlertTitle>
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     )
@@ -60,8 +71,8 @@ export function MethodsView() {
   return (
     <div className="flex flex-col gap-6">
       <p className="max-w-prose text-sm text-muted-foreground">
-        Every number here comes from the back-test in <code>performance.json</code>, built by{" "}
-        <code>pipeline/lunop/modeling/evaluate.py</code>. Case data runs to {fmtDate(perf.data_end, { year: "numeric" })}.
+        We tested the forecast on past years where we already know what happened. Every number below comes from those tests.
+        Case data ends {fmtDate(perf.data_end, { year: "numeric" })}.
       </p>
       <div className="grid gap-6 lg:grid-cols-2">
         <EventStudy perf={perf} />
@@ -96,13 +107,10 @@ function EventStudy({ perf }: { perf: Performance }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Event study</CardTitle>
-        <CardDescription>
-          Cases compared with the usual for that week, around each city&apos;s heaviest 2% of rain weeks ({all.events} events;{" "}
-          {iloilo?.events ?? 0} in Iloilo).
-        </CardDescription>
-      </CardHeader>
+      <SectionHeader method="Event study" title="What happens after heavy rain?">
+        Cases compared with a normal week for that time of year, before and after each city&apos;s heaviest rain weeks (top 2%).{" "}
+        {all.events} heavy-rain weeks across 12 cities, {iloilo?.events ?? 0} of them in Iloilo.
+      </SectionHeader>
       <CardContent className="flex flex-col gap-3">
         <ChartContainer config={eventConfig} className="aspect-auto h-56 w-full">
           <LineChart data={data} margin={{ left: -16, right: 8, top: 8 }}>
@@ -126,9 +134,9 @@ function EventStudy({ perf }: { perf: Performance }) {
                 <ChartTooltipContent
                   labelFormatter={(_, p) => {
                     const w = Number(p?.[0]?.payload?.week)
-                    return w === 0 ? "Heavy-rain week" : `${Math.abs(w)} wk ${w > 0 ? "after" : "before"}`
+                    return w === 0 ? "Week of the heavy rain" : `${Math.abs(w)} wk ${w > 0 ? "after" : "before"} the rain`
                   }}
-                  formatter={(v, name) => `${eventConfig[name as keyof typeof eventConfig].label}: ${times(Number(v))}`}
+                  formatter={(v, name) => `${eventConfig[name as keyof typeof eventConfig].label}: ${times(Number(v))} normal`}
                 />
               }
             />
@@ -138,8 +146,8 @@ function EventStudy({ perf }: { perf: Performance }) {
           </LineChart>
         </ChartContainer>
         <p className="text-sm">
-          Cases reach <strong>{times(peak.all)}</strong> the usual level {peak.week} weeks after heavy rain. The dashed line at
-          1× is a normal week.
+          Cases climb to <strong>{times(peak.all)} normal</strong> about {peak.week} weeks after heavy rain, then ease off. That
+          delay is what gives health teams time to act. The dashed line is a normal week.
         </p>
       </CardContent>
     </Card>
@@ -147,8 +155,8 @@ function EventStudy({ perf }: { perf: Performance }) {
 }
 
 const lagConfig = {
-  rr: { label: "Rate ratio", color: "var(--chart-2)" },
-  band: { label: "95% CI", color: "var(--chart-2)" },
+  rr: { label: "Effect on cases", color: "var(--chart-2)" },
+  band: { label: "Likely range", color: "var(--chart-2)" },
 } satisfies ChartConfig
 
 function LagCurve({ perf }: { perf: Performance }) {
@@ -159,22 +167,22 @@ function LagCurve({ perf }: { perf: Performance }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Rain lag curve</CardTitle>
-        <CardDescription>How much rain k weeks earlier raises expected cases, per step of log rain.</CardDescription>
-      </CardHeader>
+      <SectionHeader method="Rain lag curve" title="When does rain matter most?">
+        How strongly each past week&apos;s rain moves the case forecast. Above the dashed line means more rain leads to more
+        cases; the shaded band is the likely range (95%).
+      </SectionHeader>
       <CardContent className="flex flex-col gap-3">
         <Tabs value={variant} onValueChange={(v) => setVariant(v as typeof variant)}>
           <TabsList>
-            <TabsTrigger value="rain_only">Rain only (live)</TabsTrigger>
-            <TabsTrigger value="with_cases">Rain + recent cases</TabsTrigger>
+            <TabsTrigger value="rain_only">Live forecast</TabsTrigger>
+            <TabsTrigger value="with_cases">With recent cases</TabsTrigger>
           </TabsList>
         </Tabs>
         <ChartContainer config={lagConfig} className="aspect-auto h-44 w-full">
           <ComposedChart data={data} margin={{ left: -16, right: 8, top: 8 }}>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="lag" tickLine={false} axisLine={false} tickFormatter={(k: number) => `${k} wk`} />
-            <YAxis tickLine={false} axisLine={false} domain={["auto", "auto"]} tickFormatter={(v: number) => v.toFixed(2)} />
+            <YAxis tickLine={false} axisLine={false} domain={["auto", "auto"]} tickFormatter={(v: number) => `${v.toFixed(2)}×`} />
             <ReferenceLine y={1} stroke="var(--foreground)" strokeDasharray="3 3" />
             <ChartTooltip
               content={
@@ -182,8 +190,8 @@ function LagCurve({ perf }: { perf: Performance }) {
                   labelFormatter={(_, p) => `Rain ${p?.[0]?.payload?.lag} weeks earlier`}
                   formatter={(v, name) =>
                     name === "band"
-                      ? `95% CI: ${(v as number[]).map((x) => x.toFixed(2)).join("–")}`
-                      : `Rate ratio: ${Number(v).toFixed(2)}`
+                      ? `Likely range: ${(v as number[]).map((x) => `${x.toFixed(2)}×`).join(" to ")}`
+                      : `Effect on cases: ${Number(v).toFixed(2)}×`
                   }
                 />
               }
@@ -193,8 +201,8 @@ function LagCurve({ perf }: { perf: Performance }) {
           </ComposedChart>
         </ChartContainer>
         <p className="text-sm">
-          Rain matters most <strong>{peak.lag} weeks</strong> before: rate ratio {peak.rr.toFixed(2)} (95% CI {peak.lo.toFixed(2)}–
-          {peak.hi.toFixed(2)}). Above 1 means more rain, more cases.
+          Rain from <strong>{peak.lag} weeks earlier</strong> has the biggest effect. When that week is about 2.7 times wetter,
+          expected cases rise by {pct(peak.rr - 1)} (likely {pct(peak.lo - 1)}–{pct(peak.hi - 1)}).
         </p>
       </CardContent>
     </Card>
@@ -211,12 +219,11 @@ function RainCheck({ perf }: { perf: Performance }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Rain source check</CardTitle>
-        <CardDescription>
-          The model learned from CCHAIN rain but runs live on Open-Meteo. Weekly Iloilo rain from both, {rc.n_weeks} weeks.
-        </CardDescription>
-      </CardHeader>
+      <SectionHeader method="Rain source check" title="Can we trust the live rain data?">
+        The forecast learned from one rain dataset (CCHAIN) but runs today on another (Open-Meteo). Each dot is one week of
+        Iloilo rain measured by both, {rc.n_weeks} weeks in all. If they agreed perfectly, every dot would sit on the dashed
+        line.
+      </SectionHeader>
       <CardContent className="grid gap-6 md:grid-cols-[minmax(0,1fr)_16rem]">
         <ChartContainer config={rainConfig} className="aspect-square max-h-80 w-full">
           <ScatterChart margin={{ left: -8, right: 8, top: 8, bottom: 8 }}>
@@ -228,7 +235,7 @@ function RainCheck({ perf }: { perf: Performance }) {
               domain={[0, max]}
               tickLine={false}
               axisLine={false}
-              label={{ value: "CCHAIN (mm/week)", position: "insideBottom", offset: -4, className: "fill-muted-foreground text-xs" }}
+              label={{ value: "CCHAIN, mm per week", position: "insideBottom", offset: -4, className: "fill-muted-foreground text-xs" }}
             />
             <YAxis
               type="number"
@@ -261,21 +268,21 @@ function RainCheck({ perf }: { perf: Performance }) {
         </ChartContainer>
         <div className="flex flex-col gap-4 text-sm">
           <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 tabular-nums">
-            <dt className="text-muted-foreground">Correlation r</dt>
+            <dt className="text-muted-foreground">Agreement (1 = perfect)</dt>
             <dd className="text-right font-medium">{rc.r.toFixed(2)}</dd>
-            <dt className="text-muted-foreground">Ratio of means</dt>
-            <dd className="text-right font-medium">{rc.ratio.toFixed(2)}</dd>
-            <dt className="text-muted-foreground">Live rain scaled by</dt>
+            <dt className="text-muted-foreground">CCHAIN vs Open-Meteo, on average</dt>
+            <dd className="text-right font-medium">{signedPct(rc.ratio - 1)}</dd>
+            <dt className="text-muted-foreground">Live rain multiplied by</dt>
             <dd className="text-right font-medium">{rc.scale.toFixed(3)}</dd>
           </dl>
           <p>
             {passes
-              ? "Both tests pass (r ≥ 0.9, ratio 0.9–1.1), so live rain is used as is."
-              : `The plan was to use Open-Meteo as is if r ≥ 0.9 and the ratio is 0.9–1.1. r is ${rc.r.toFixed(2)}, so live rain is scaled by ${rc.scale.toFixed(3)}.`}
+              ? "The two sources agree closely, so live rain is used as is."
+              : `They agree only moderately (${rc.r.toFixed(2)}; we wanted 0.9 or more). Open-Meteo also reads drier on average, so live rain is multiplied by ${rc.scale.toFixed(3)}.`}
           </p>
           <p className="text-muted-foreground">
-            A scale factor can&apos;t fix a weak correlation. The back-test below also runs the live model on Open-Meteo rain to
-            show the cost.
+            The adjustment fixes the average, not the week-to-week disagreement. The accuracy test below shows what that costs
+            the live forecast.
           </p>
         </div>
       </CardContent>
@@ -291,47 +298,45 @@ function LeaveOneEventOut({ perf }: { perf: Performance }) {
   const median = summary.mae_weeks_1_6_median
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Leave-one-event-out</CardTitle>
-        <CardDescription>
-          The model is refitted without each of Iloilo&apos;s {summary.events} heavy-rain events, then asked to forecast it. A surge
-          is cases at 1.5× the usual or more over the next 4 weeks.
-        </CardDescription>
-      </CardHeader>
+    <Card className="[contain:inline-size]">
+      <SectionHeader method="Leave-one-event-out test" title="Could it have predicted past floods?">
+        For each of Iloilo&apos;s {summary.events} heaviest rain events, we hid that event from the model, retrained it, and asked
+        it to forecast what came next. A surge means cases at least 1.5 times normal over the following 4 weeks.
+      </SectionHeader>
       <CardContent className="flex flex-col gap-4">
         <dl className="grid gap-4 text-sm sm:grid-cols-3">
           <div className="flex flex-col gap-1">
-            <dt className="text-muted-foreground">Peak timing error</dt>
-            <dd className="text-lg font-semibold tabular-nums">{summary.peak_error_abs_mean.toFixed(1)} weeks</dd>
-            <dd className="text-muted-foreground">mean, either direction</dd>
+            <dt className="text-muted-foreground">Timing of the peak</dt>
+            <dd className="text-lg font-semibold tabular-nums">Off by {summary.peak_error_abs_mean.toFixed(1)} weeks</dd>
+            <dd className="text-muted-foreground">on average, early or late</dd>
           </div>
           <div className="flex flex-col gap-1">
-            <dt className="text-muted-foreground">Rain + recent cases, High+ alert</dt>
+            <dt className="text-muted-foreground">With recent cases (Replay)</dt>
             <dd className="text-lg font-semibold tabular-nums">
-              {caught(summary.alerts_with_cases)} of {summary.alerts_with_cases.surges} surges
+              Warned of {caught(summary.alerts_with_cases)} of {summary.alerts_with_cases.surges} surges
             </dd>
-            <dd className="text-muted-foreground">{pct(summary.alerts_with_cases.false_alarm_high)} of alerts were false</dd>
+            <dd className="text-muted-foreground">{pct(summary.alerts_with_cases.false_alarm_high)} of warnings were false alarms</dd>
           </div>
           <div className="flex flex-col gap-1">
-            <dt className="text-muted-foreground">Rain only, High+ alert</dt>
+            <dt className="text-muted-foreground">Live forecast (rain only)</dt>
             <dd className="text-lg font-semibold tabular-nums">
-              {caught(summary.alerts_rain_only)} of {summary.alerts_rain_only.surges} surges
+              Warned of {caught(summary.alerts_rain_only)} of {summary.alerts_rain_only.surges} surges
             </dd>
-            <dd className="text-muted-foreground">{pct(summary.alerts_rain_only.false_alarm_high)} of alerts were false</dd>
+            <dd className="text-muted-foreground">{pct(summary.alerts_rain_only.false_alarm_high)} of warnings were false alarms</dd>
           </div>
         </dl>
+        <p className="text-sm text-muted-foreground">A warning means the alert level reached High or Severe in the week of the rain.</p>
 
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Event</TableHead>
-              <TableHead className="text-right">Rain vs usual</TableHead>
-              <TableHead className="text-right">Cases vs usual</TableHead>
-              <TableHead>Alert: rain + cases</TableHead>
-              <TableHead>Alert: rain only</TableHead>
-              <TableHead>Peak forecast</TableHead>
-              <TableHead className="text-right">Error, wk +1–6</TableHead>
+              <TableHead className="text-right">Rain that week</TableHead>
+              <TableHead className="text-right">Cases after</TableHead>
+              <TableHead className="whitespace-normal">Level: with recent cases</TableHead>
+              <TableHead className="whitespace-normal">Level: live forecast</TableHead>
+              <TableHead className="whitespace-normal">Peak predicted</TableHead>
+              <TableHead className="text-right whitespace-normal">Miss, cases/week</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="tabular-nums">
@@ -341,15 +346,15 @@ function LeaveOneEventOut({ perf }: { perf: Performance }) {
                   {fmtDate(e.date, { year: "numeric" })}
                   {replay.has(e.event_id) && (
                     <Badge variant="outline" className="ml-2">
-                      In replay
+                      In Replay
                     </Badge>
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {e.rain} mm <span className="text-muted-foreground">({times(e.rain / e.rain_clim)})</span>
+                  {e.rain} mm <span className="text-muted-foreground">({times(e.rain / e.rain_clim)} normal)</span>
                 </TableCell>
                 <TableCell className="text-right">
-                  {e.surge_ratio === null ? "—" : times(e.surge_ratio)}
+                  {e.surge_ratio === null ? "—" : `${times(e.surge_ratio)} normal`}
                   {e.surge && (
                     <Badge variant="secondary" className="ml-2">
                       Surge
@@ -369,10 +374,11 @@ function LeaveOneEventOut({ perf }: { perf: Performance }) {
         </Table>
 
         <p className="text-sm">
-          Error is mean absolute error in cases per week, 1-week-ahead, against the usual-for-the-week forecast. Averaged over
-          events, rain + recent cases scores {mean.with_cases["1"].toFixed(1)} vs {mean.seasonal["1"].toFixed(1)}. By median it
-          scores {median.with_cases["1"].toFixed(1)} vs {median.seasonal["1"].toFixed(1)}: the gain comes from the big 2011
-          outbreak, and on a typical event the usual-for-the-week forecast does slightly better.
+          <strong>Miss</strong> is how far the next-week forecast was from the real count, on average over the 6 weeks after the
+          rain, next to the miss from simply assuming a normal week. Across all events the model misses by{" "}
+          {mean.with_cases["1"].toFixed(1)} cases a week vs {mean.seasonal["1"].toFixed(1)}, but the huge 2011 outbreak drives
+          that. On a typical event it misses by {median.with_cases["1"].toFixed(1)} vs {median.seasonal["1"].toFixed(1)}, slightly
+          worse than assuming a normal week.
         </p>
       </CardContent>
     </Card>
@@ -386,14 +392,12 @@ function Backtest({ perf }: { perf: Performance }) {
   const weekly = perf.alerts_weekly
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Back-test vs baselines</CardTitle>
-        <CardDescription>
-          Trained on 2013–2017, tested on every week of 2018–2022, at 1 to 4 weeks ahead. Lower is better; the percentage is
-          against the usual-for-the-week forecast.
-        </CardDescription>
-      </CardHeader>
+    <Card className="[contain:inline-size]">
+      <SectionHeader method="Back-test vs baselines" title="How accurate is it week to week?">
+        Trained on 2013–2017, then tested on every week of 2018–2022, which it had never seen, at 1 to 4 weeks ahead. Lower
+        numbers are better. The colored percentage shows how much better (blue) or worse (red) each forecast is than simply
+        assuming a normal week.
+      </SectionHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
           <Tabs value={scope} onValueChange={(v) => setScope(v as BacktestScope)}>
@@ -404,49 +408,53 @@ function Backtest({ perf }: { perf: Performance }) {
           </Tabs>
           <Tabs value={metric} onValueChange={(v) => setMetric(v as BacktestMetric)}>
             <TabsList>
-              <TabsTrigger value="deviance">Poisson deviance</TabsTrigger>
-              <TabsTrigger value="mae">Mean abs. error</TabsTrigger>
+              <TabsTrigger value="deviance">Overall error</TabsTrigger>
+              <TabsTrigger value="mae">Cases off per week</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
         <BacktestTable lines={table.main} />
+        <p className="text-sm text-muted-foreground">
+          {metric === "deviance"
+            ? "Overall error (Poisson deviance) is suited to case counts and weighs big misses more."
+            : "Cases off per week (mean absolute error) is the average gap between forecast and real cases."}
+        </p>
 
         {table.ablations.length > 0 && (
-          <details className="group rounded-lg border px-4 py-2 text-sm">
-            <summary className="cursor-pointer py-1 font-medium">Ablations ({table.ablations.length})</summary>
-            <p className="py-2 text-muted-foreground">
-              Variants tried and not deployed: training from 2008, dropping the 2011–12 Sendong-era weeks, and an Iloilo-only
-              rain slope.
-            </p>
+          <details className="rounded-lg border px-4 py-2 text-sm">
+            <summary className="cursor-pointer py-1 font-medium">Other versions we tested ({table.ablations.length})</summary>
+            <p className="py-2 text-muted-foreground">These were tried and not used. They are shown so you can see the choice.</p>
             <BacktestTable lines={table.ablations} />
           </details>
         )}
 
         <div className="flex flex-col gap-2 text-sm">
-          <h3 className="font-medium">Weekly alerts, Iloilo 2018–2022</h3>
+          <h3 className="font-medium">Warnings, every week of 2018–2022 in Iloilo</h3>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Model</TableHead>
-                <TableHead className="text-right">Surge weeks caught (High+)</TableHead>
-                <TableHead className="text-right">High+ alerts that were false</TableHead>
+                <TableHead>Forecast</TableHead>
+                <TableHead className="text-right">Surge weeks it warned of</TableHead>
+                <TableHead className="text-right">Warnings that were false alarms</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="tabular-nums">
               <TableRow>
-                <TableCell>Rain + recent cases (replay)</TableCell>
+                <TableCell>LUNOP with recent cases (used in Replay)</TableCell>
                 <TableCell className="text-right">{pct(weekly.with_cases.hit_rate_high)}</TableCell>
                 <TableCell className="text-right">{pct(weekly.with_cases.false_alarm_high)}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell>Rain only (live)</TableCell>
+                <TableCell>LUNOP live forecast (rain only)</TableCell>
                 <TableCell className="text-right">{pct(weekly.rain_only.hit_rate_high)}</TableCell>
                 <TableCell className="text-right">{pct(weekly.rain_only.false_alarm_high)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
-          <p className="text-muted-foreground">Out of {weekly.with_cases.surges} surge weeks.</p>
+          <p className="text-muted-foreground">
+            Out of {weekly.with_cases.surges} surge weeks. A warning means the level reached High or Severe.
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -458,7 +466,7 @@ function BacktestTable({ lines }: { lines: BacktestLine[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Model</TableHead>
+          <TableHead>Forecast</TableHead>
           {HORIZONS.map((h) => (
             <TableHead key={h} className="text-right">
               {h} wk ahead
@@ -489,10 +497,10 @@ function BacktestTable({ lines }: { lines: BacktestLine[] }) {
 }
 
 const ZAMBOANGA: [keyof Pick<Performance["zamboanga"], "hazard_pct" | "hazard_25yr_med" | "hazard_25yr_high" | "score">, string][] = [
-  ["score", "Hazard × population (our score)"],
-  ["hazard_pct", "Flood-prone share"],
-  ["hazard_25yr_med", "25-year flood, medium hazard"],
-  ["hazard_25yr_high", "25-year flood, high hazard"],
+  ["score", "Our priority score (flood hazard × population)"],
+  ["hazard_pct", "Share of the barangay that floods"],
+  ["hazard_25yr_med", "Medium flood-hazard areas"],
+  ["hazard_25yr_high", "High flood-hazard areas"],
 ]
 const RHO_MIN = -0.4
 const RHO_MAX = 0.6
@@ -502,13 +510,11 @@ function Zamboanga({ perf }: { perf: Performance }) {
   const z = perf.zamboanga
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Zamboanga ranking check</CardTitle>
-        <CardDescription>
-          Iloilo has no barangay case data, so the ranking is checked in Zamboanga: Spearman ρ against cases per 100k per year,
-          {` ${z.barangays}`} barangays, {z.cases} cases, bootstrap 95% CI.
-        </CardDescription>
-      </CardHeader>
+      <SectionHeader method="Zamboanga ranking check" title="Does the barangay ranking work?">
+        Iloilo has no case counts by barangay, so we tested the ranking in Zamboanga, the only city that has them ({z.barangays}{" "}
+        barangays, {z.cases} cases). Each row shows how well a measure lines up with where cases happened: 0 means no link, 1 a
+        perfect match.
+      </SectionHeader>
       <CardContent className="flex flex-col gap-4">
         <ul className="flex flex-col gap-3">
           {ZAMBOANGA.map(([key, label]) => (
@@ -516,8 +522,9 @@ function Zamboanga({ perf }: { perf: Performance }) {
           ))}
         </ul>
         <p className="text-sm text-muted-foreground">
-          A CI that stays right of 0 means barangays ranked higher did have more cases. The signal is weak and comes from the
-          medium-hazard layer. Zamboanga&apos;s data also reflects where cases were detected, not only where they happened.
+          The dot is the result; the bar is its likely range (95%). When the whole bar sits right of the line at 0, the link is
+          real. Our score passes, but the link is weak and comes mostly from medium-hazard areas. Zamboanga&apos;s counts also
+          reflect where cases were found, not only where they happened.
         </p>
       </CardContent>
     </Card>
@@ -529,8 +536,11 @@ function RhoRow({ label, c }: { label: string; c: Correlation }) {
     <li className="flex flex-col gap-1 text-sm">
       <div className="flex justify-between gap-4">
         <span>{label}</span>
-        <span className="tabular-nums">
-          ρ <strong>{fixed2(c.rho)}</strong> <span className="text-muted-foreground">({fixed2(c.lo)} to {fixed2(c.hi)})</span>
+        <span className="shrink-0 tabular-nums">
+          <strong>{fixed2(c.rho)}</strong>{" "}
+          <span className="text-muted-foreground">
+            ({fixed2(c.lo)} to {fixed2(c.hi)})
+          </span>
         </span>
       </div>
       <div className="relative h-3" aria-hidden>
@@ -547,29 +557,31 @@ function RhoRow({ label, c }: { label: string; c: Correlation }) {
 }
 
 function Dropped({ perf }: { perf: Performance }) {
-  const slope = backtestTable(perf.backtest, "iloilo", "deviance")
-  const base = slope.main.find((l) => l.model === "with_cases")
-  const withSlope = slope.ablations.find((l) => l.model === "with_cases + Iloilo rain slope")
-  const slopeNote =
-    base && withSlope && base.values[2] !== null && withSlope.values[2] !== null
-      ? ` (Iloilo deviance at 3 weeks ahead ${withSlope.values[2].toFixed(2)} vs ${base.values[2].toFixed(2)})`
-      : ""
+  const t = backtestTable(perf.backtest, "iloilo", "deviance")
+  const base = t.main.find((l) => l.model === "with_cases")?.values[2]
+  const withSlope = t.ablations.find((l) => l.model === "with_cases + Iloilo rain slope")?.values[2]
+  const slopeNote = base != null && withSlope != null ? ` (error ${withSlope.toFixed(2)} vs ${base.toFixed(2)} at 3 weeks ahead)` : ""
 
   const items: [string, string][] = [
-    ["River discharge (GloFAS)", "Added about 1% on top of rain."],
-    ["Distributed lag non-linear model", "Extra complexity for a lag curve the linear version already captures."],
-    ["Gradient boosting", "Kept as an optional benchmark only. In earlier dengue work, tree models did no better than repeating last week."],
-    ["Iloilo-only rain slope", `No gain; slightly worse at 3–4 weeks ahead${slopeNote}.`],
-    ["Training years 2008–2012", "The 2011–12 outbreaks doubled Iloilo's baseline and made the rain-only model worse than seasonal. Those events are still forecast in the leave-one-event-out test."],
-    ["Poverty in the priority score", "Its link with cases flips direction between cities."],
+    ["River flow data (GloFAS)", "Improved the forecast by only about 1% beyond rain."],
+    ["A more complex rain-delay model (DLNM)", "Adds complexity without changing the rain timing the simple model already finds."],
+    [
+      "Machine-learning models (gradient boosting)",
+      "In our earlier dengue work they did no better than repeating last week's count. Kept only as an optional comparison.",
+    ],
+    ["A separate rain effect just for Iloilo", `Didn't help, and was slightly worse 3–4 weeks ahead${slopeNote}.`],
+    [
+      "Case data from 2008–2012",
+      "The 2011–12 outbreaks made Iloilo look about twice as outbreak-prone as it is now, which made the live forecast worse than assuming a normal week. Those years are still used to test the model.",
+    ],
+    ["Poverty in the priority score", "Poorer barangays had more cases in some cities and fewer in others, so it can't guide the ranking."],
   ]
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Dropped, and why</CardTitle>
-        <CardDescription>Inputs and options we tried or considered and left out.</CardDescription>
-      </CardHeader>
+      <SectionHeader method="Dropped features" title="What we left out, and why">
+        Things we tried or considered that didn&apos;t earn a place in the model.
+      </SectionHeader>
       <CardContent>
         <dl className="flex flex-col gap-3 text-sm">
           {items.map(([name, why]) => (
@@ -590,42 +602,38 @@ function Limitations({ perf }: { perf: Performance }) {
 
   const items: [string, string][] = [
     [
-      "Live alerts are weak",
-      `Without current case counts, the live model rarely flags surges: ${pct(perf.alerts_weekly.rain_only.hit_rate_high)} of surge weeks at High or above. Read the live level as rain risk, not as an outbreak detector.`,
+      "Live warnings are weak",
+      `Today's forecast has no current case counts, only rain. In testing it warned of just ${pct(perf.alerts_weekly.rain_only.hit_rate_high)} of surge weeks. Treat its level as rain risk, not proof of an outbreak.`,
+    ],
+    ["It can overshoot at the peak", "During the 2011 outbreak it forecast 241 cases for a week that had 113."],
+    [
+      "The gains come from big events",
+      `On a typical event, simply assuming a normal week was slightly more accurate (a miss of ${median.seasonal["1"].toFixed(1)} vs ${median.with_cases["1"].toFixed(1)} cases a week).`,
     ],
     [
-      "Overshoot at outbreak peaks",
-      "Recent cases push the 1-week forecast up faster than outbreaks grow. During the 2011 outbreak it forecast 241 cases for a week that had 113.",
+      "The barangay check is from one city",
+      `The ranking was tested only in Zamboanga, with a weak link (${fixed2(z.rho)}, likely ${fixed2(z.lo)} to ${fixed2(z.hi)}), mostly from medium-hazard areas.`,
     ],
     [
-      "Typical events",
-      `By median error over the leave-one-event-out events, the usual-for-the-week forecast (${median.seasonal["1"].toFixed(1)}) beats rain + recent cases (${median.with_cases["1"].toFixed(1)}). The gains come from big events.`,
-    ],
-    [
-      "Barangay check is one city",
-      `Zamboanga ρ = ${z.rho.toFixed(2)} (95% CI ${z.lo.toFixed(2)}–${z.hi.toFixed(2)}), carried by the medium-hazard layer; the high-hazard layer alone shows nothing.`,
-    ],
-    [
-      "Rain source mismatch",
-      `CCHAIN and Open-Meteo weekly rain correlate at r = ${perf.rain_check.r.toFixed(2)}.`,
+      "The live rain data differs",
+      `The live rain source agrees only moderately with the data the model learned from (${perf.rain_check.r.toFixed(2)}, where 1 is perfect).`,
     ],
     [
       "Cases fell after 2012",
-      "Possibly from Iloilo's flood control works, not yet verified. Training from 2013 handles it for now.",
+      "Possibly because of Iloilo's flood control works, not yet confirmed. The model is trained on 2013 onward to match current levels.",
     ],
-    ["PIDSR week meaning", "Whether a case's week is symptom onset or report date is unknown, which changes how the lag is read."],
     [
-      "Data ends in 2022",
-      `Case data runs to ${fmtDate(perf.data_end, { year: "numeric" })}. Live mode has no current cases.`,
+      "Unclear what a case's date means",
+      "The national surveillance system (PIDSR) doesn't say whether a case is dated by when symptoms started or when it was reported. That shifts how the rain delay should be read.",
     ],
+    ["The data stops in 2022", `Case data ends ${fmtDate(perf.data_end, { year: "numeric" })}. The live forecast has no newer cases to learn from.`],
   ]
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Limitations</CardTitle>
-        <CardDescription>What this model can&apos;t tell you.</CardDescription>
-      </CardHeader>
+      <SectionHeader method="Limitations" title="What this can't tell you">
+        Read the forecast with these in mind.
+      </SectionHeader>
       <CardContent>
         <dl className="grid gap-x-8 gap-y-4 text-sm md:grid-cols-2">
           {items.map(([name, text]) => (
