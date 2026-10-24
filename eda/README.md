@@ -18,7 +18,7 @@ The summary of findings, implications and open issues is in [`docs/FINDINGS.md`]
 ## Running
 
 ```sh
-python scripts/download.py          # from repo root; fetches CCHAIN into data/raw/ (~580 MB)
+cd pipeline && uv run python -m lunop.dataset download && cd ..   # fetches CCHAIN into data/raw/ (~590 MB)
 cd eda
 uv sync
 uv run jupyter lab                   # .py and .ipynb are paired; edit either
