@@ -7,7 +7,7 @@
 ```
 Offline / daily (Python)                       Vercel (Next.js)                       Neon (Postgres)
 ────────────────────────                       ────────────────                       ───────────────
-make model (laptop): CCHAIN → fit → model.json
+make data train (laptop): CCHAIN → fit → model.json
 make replay / evaluate → replay/*.json,        pages read static JSON
                          performance.json  ──► from web/public/data/
 GitHub Action, 06:00 PHT daily:
@@ -40,28 +40,36 @@ GitHub Action, 06:00 PHT daily:
 ```
 pjdsc-26/
 ├── docs/                    PRD.md, TRD.md, FINDINGS.md
-├── eda/                     EDA notebooks (Jupytext .py + .ipynb), reports/ HTML
-├── scripts/
-│   └── download.py          fetch CCHAIN tables from HDX → data/raw/
-├── model/                   uv project
-│   ├── build.py             weekly city panel; barangays.geojson with static attributes
-│   ├── rain_check.py        CCHAIN vs Open-Meteo archive (§5.5)
-│   ├── fit.py               fit both model variants → artifacts/model.json
-│   ├── evaluate.py          back-test, event study, LOEO, Zamboanga check → performance.json
-│   ├── replay.py            per-event bundles → replay/*.json
-│   ├── live.py              daily: Open-Meteo → forecast.json
-│   └── tests/
+├── eda/                     EDA notebooks (Jupytext .py + .ipynb), reports/ HTML; own uv project
+├── pipeline/                uv project (Cookiecutter Data Science layout)
+│   ├── lunop/               package, one module per stage
+│   │   ├── config.py        paths and constants
+│   │   ├── dataset.py       download CCHAIN from HDX; build processed tables and barangays.geojson
+│   │   ├── features.py      design matrices per horizon and variant
+│   │   ├── rain_check.py    CCHAIN vs Open-Meteo archive (§5.5)
+│   │   ├── modeling/
+│   │   │   ├── train.py     fit both model variants → models/model.json
+│   │   │   ├── evaluate.py  back-test, event study, LOEO, Zamboanga check → performance.json
+│   │   │   └── predict.py   daily: Open-Meteo → forecast.json
+│   │   └── replay.py        per-event bundles → replay/*.json
+│   ├── tests/               pytest
+│   ├── models/              model.json (committed; the daily job reads it)
+│   ├── reports/             backtest.md, figures
+│   └── pyproject.toml
 ├── web/
 │   ├── app/                 (dashboard)/{page, replay, barangays, report, methods}
 │   ├── app/api/reports/     route.ts (GET, POST)
 │   ├── lib/                 priority.ts, recommend.ts, spots.ts, db.ts
 │   └── public/data/         forecast.json, barangays.geojson, performance.json,
 │                            config.json, replay/*.json   (all committed)
-├── data/                    raw/, processed/ (gitignored)
-├── artifacts/               model.json
+├── data/                    raw/, interim/, processed/, external/ (gitignored; shared by eda/ and pipeline/)
 ├── .github/workflows/       forecast.yml
-└── Makefile                 setup, data, model, evaluate, replay, live, web, test, all
+└── Makefile                 setup, data, train, evaluate, replay, live, web, test, all
 ```
+
+A monorepo: `pipeline/` (Python) and `web/` (Next.js) are separate projects. `pipeline/` follows [Cookiecutter Data Science](https://cookiecutter-data-science.drivendata.org/): one importable package with a module per stage, plus `models/` and `reports/`. `data/` stays at the root because `eda/` uses it too. `eda/` plays the role of `notebooks/`; new notebooks import from `lunop` instead of copying loaders. The root `Makefile` drives both projects.
+
+**Data stages:** `raw/` is CCHAIN as downloaded and never edited; `interim/` holds caches (city daily rain); `processed/` holds model-ready tables (`panel.parquet`, `events.parquet`, `zamboanga_brgy.parquet`); `external/` holds non-CCHAIN pulls (Open-Meteo archive).
 
 ## 4. Data
 
@@ -80,7 +88,7 @@ pjdsc-26/
 
 Iloilo City is PSGC `PH063022000`, with 180 barangays.
 
-**Calendar:** PIDSR weeks start Monday and use 52-week years, so the weeks of 2012-12-31 and 2018-01-01 are missing. `build.py` reindexes each city to the full weekly calendar so a row shift is always a one-week lag. EDA and data checks: [FINDINGS.md](FINDINGS.md).
+**Calendar:** PIDSR weeks start Monday and use 52-week years, so the weeks of 2012-12-31 and 2018-01-01 are missing. `pipeline/lunop/dataset.py` reindexes each city to the full weekly calendar so a row shift is always a one-week lag. EDA and data checks: [FINDINGS.md](FINDINGS.md).
 
 **Static outputs** (committed to `web/public/data/`):
 - `barangays.geojson`: simplified polygons (~1e-4°) with `psgc, name, pop, hazard_pct, access30_pct, nearest_facility, travel_min, water_dist_m, bldg_density`.
@@ -101,7 +109,7 @@ log μ = city_c + s(woy_{t+h}) + Σ_{k=0..8} β_k · log1p(rain[c, t+h−k]) + �
 - Rain lags after week t use Open-Meteo forecast rain (up to 16 days), then the seasonal mean rain for that week.
 - `level_c`: mean log cases over the city's past 52 weeks, to absorb long-term trends.
 - One model per horizon h ∈ {1, 2, 3, 4}. Dispersion α is estimated by maximum likelihood.
-- **Iloilo at h ≥ 3 is unproven.** In the EDA back-test, adding rain to season + recent cases cut Iloilo's all-weeks error by 9% at h = 1 and 4% at h = 2, but raised it by 10% at h = 3. `evaluate.py` reports every metric per horizon, and tests an Iloilo × rain interaction. If h = 3–4 still lose on post-storm weeks, the UI caveats those weeks.
+- **Iloilo at h ≥ 3 is unproven.** In the EDA back-test, adding rain to season + recent cases cut Iloilo's all-weeks error by 9% at h = 1 and 4% at h = 2, but raised it by 10% at h = 3. `modeling/evaluate.py` reports every metric per horizon, and tests an Iloilo × rain interaction. If h = 3–4 still lose on post-storm weeks, the UI caveats those weeks.
 - **Two variants**, fitted in the same loop:
   - `with_cases` includes γ. It is used for replay and the back-test, and compared against the seasonal + recent-cases baseline.
   - `rain_only` drops both γ and `level_c`, which need recent cases. It is used live, where there are no current case counts.
@@ -110,7 +118,7 @@ log μ = city_c + s(woy_{t+h}) + Σ_{k=0..8} β_k · log1p(rain[c, t+h−k]) + �
 **Dropped, with reasons recorded on the Methods page:**
 - River discharge (GloFAS) added about 1% on top of rain, so it was dropped.
 - The DLNM upgrade is extra complexity for a lag curve the linear version already captures.
-- Gradient boosting runs as a benchmark in `evaluate.py` only if time allows.
+- Gradient boosting runs as a benchmark in `modeling/evaluate.py` only if time allows.
 
 ### 5.2 Outputs (`forecast.json`)
 
@@ -134,7 +142,7 @@ Applied to the maximum `ratio` over weeks +1 to +4. Thresholds are tuned on the 
 | High | 2.5 ≤ ratio < 4 |
 | Severe | ratio ≥ 4, or P(cases ≥ city p95) ≥ 0.5 |
 
-### 5.4 Evaluation (`evaluate.py` → `performance.json`, `reports/backtest.md`)
+### 5.4 Evaluation (`modeling/evaluate.py` → `performance.json`, `reports/backtest.md`)
 
 **Headline (event-conditional, Iloilo)**
 - **Leave-one-event-out (LOEO)** over the 16 Iloilo top-2% rain events: refit without each event's window (−2 to +8 weeks), then forecast it.
@@ -151,12 +159,12 @@ Applied to the maximum `ratio` over weeks +1 to +4. Thresholds are tuned on the 
 
 The LOEO results choose the three replay events: two hits and one miss or false alarm.
 
-### 5.5 Rain source check (`rain_check.py`)
+### 5.5 Rain source check (`pipeline/lunop/rain_check.py`)
 
 The model is trained on CCHAIN rain and run live on Open-Meteo rain. Both are likely ERA5-based, so we check before building any calibration:
 - Compare weekly Iloilo rain sums, CCHAIN vs Open-Meteo archive at the same points, 2008–2022.
 - If **r ≥ 0.9 and the ratio of means is in 0.9–1.1**, use Open-Meteo as is.
-- Otherwise store **one scale factor** (ratio of means) in `model.json` and apply it to live rain.
+- Otherwise store **one scale factor** (ratio of means) in `pipeline/models/model.json` and apply it to live rain.
 - The scatter plot and the result are shown on the Methods page.
 
 ### 5.6 Known limitations
@@ -256,7 +264,7 @@ create index on flood_reports (psgc, created_at);
 ## 9. Daily job (`.github/workflows/forecast.yml`)
 
 - Cron `0 22 * * *` (06:00 PHT), plus manual dispatch.
-- `uv run python -m model.live`: fetch Open-Meteo observed rain (past 9 weeks) and forecast rain (16 days) for Iloilo points, apply the §5.5 result, run `rain_only`, and write `forecast.json`.
+- `uv run python -m lunop.modeling.predict`: fetch Open-Meteo observed rain (past 9 weeks) and forecast rain (16 days) for Iloilo points, apply the §5.5 result, run `rain_only`, and write `forecast.json`.
 - Commit only if the file changed; Vercel redeploys on push.
 - On failure, the job fails loudly and the site keeps the previous file, showing its date.
 
@@ -287,7 +295,7 @@ Sidebar dashboard, with every page usable on a phone.
 
 ## 12. Testing
 
-- **Model (pytest):** the back-test runs end to end; a leakage check confirms rain features never use data unavailable at forecast time; `live.py` output matches the schema.
+- **Model (pytest):** the back-test runs end to end; a leakage check confirms rain features never use data unavailable at forecast time; `modeling/predict.py` output matches the schema.
 - **Decision engine (vitest):** priority and doses against hand-calculated examples; table-driven tests for each recommendation trigger and for corroboration (2 reports → no countdown, 3 → countdown, 1 + Elevated → countdown); the chronic-spot date rule.
 - **Before submission:** a manual smoke check on a phone: load Overview, submit a report, see it within 1 minute, play every replay event; then a fresh-clone `make all`.
 
