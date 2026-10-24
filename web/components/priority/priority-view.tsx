@@ -20,7 +20,6 @@ import type { BarangayPriority } from "@/lib/priority"
 import type { ReplayBundle, ReplayEvent } from "@/lib/replay"
 import { replaySpots, seedSpots, type Spot } from "@/lib/spots"
 import { engineState, type EngineState } from "@/lib/state"
-import { DAY_MS } from "@/lib/time"
 import { FACILITY_KINDS, type Barangay, type FacilityCollection, type FacilityKind, type Forecast } from "@/lib/types"
 
 /** Flood-map barangays on the spots map: ColorBrewer blue, as water. */
@@ -49,8 +48,7 @@ export function PriorityView() {
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Chronic spots look back a year, longer than the 7-day priority window
-  const [since] = useState(() => new Date(Date.now() - config.spots.window_days * DAY_MS).toISOString())
-  const { reports } = useReports(since)
+  const { reports } = useReports(config.spots.window_days)
 
   useEffect(() => {
     Promise.all([
