@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 
-import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, MarkerPopup, useMap } from "@/components/ui/map"
+import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, MarkerPopup, MarkerTooltip, useMap } from "@/components/ui/map"
 import type { Barangay } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -20,9 +20,12 @@ export type MapPoint = {
   lon: number
   r?: number
   className?: string
+  icon?: ReactNode
+  /** Shown on hover. */
+  label?: string
   onClick?: () => void
   /** Card opened by tapping the pin. */
-  popup?: React.ReactNode
+  popup?: ReactNode
 }
 
 /** Red for outlines; MapLibre paint can't read CSS variables. */
@@ -98,6 +101,25 @@ function Polygons({
   )
 }
 
+/** Waterways over the polygons; rivers drawn thicker than streams, canals and drains. */
+function Lines({ data }: { data: GeoJSON.FeatureCollection }) {
+  const beforeId = useLabelLayer()
+  const { resolvedTheme } = useMap()
+  return (
+    <MapGeoJSON
+      id="lines"
+      data={data}
+      fillPaint={false}
+      linePaint={{
+        "line-color": resolvedTheme === "dark" ? "#9ecae1" : "#08306b",
+        "line-width": ["match", ["get", "kind"], "river", 2.5, 1.25],
+        "line-opacity": 0.9,
+      }}
+      beforeId={beforeId}
+    />
+  )
+}
+
 /**
  * Barangay polygons over an OpenFreeMap basemap. Missing tiles leave a blank background;
  * opened offline, it skips the basemap so the polygons still draw.
@@ -107,6 +129,7 @@ export function BarangayMap({
   fill,
   outlined,
   points = [],
+  lines,
   selected,
   onHover,
   onSelect,
@@ -117,6 +140,8 @@ export function BarangayMap({
   fill: (b: Barangay) => string
   outlined?: Set<string>
   points?: MapPoint[]
+  /** Line features with a `kind` property, e.g. `waterways.geojson`. */
+  lines?: GeoJSON.FeatureCollection
   /** psgc drawn with a heavy outline. */
   selected?: string | null
   onHover?: (psgc: string | null) => void
@@ -149,14 +174,21 @@ export function BarangayMap({
     <div className={cn("relative h-96 w-full overflow-hidden rounded-md border", className)}>
       <Map bounds={initialBounds} fitBoundsOptions={{ padding: 16 }} blank={offline} cooperativeGestures>
         <Polygons filled={filled} outlines={outlines} selected={highlight} onHover={onHover} onSelect={onSelect} />
+        {lines && <Lines data={lines} />}
         {points.map((p) => (
           <MapMarker key={p.id} longitude={p.lon} latitude={p.lat} onClick={p.onClick}>
             <MarkerContent>
               <span
-                className={cn("block rounded-full border border-background bg-foreground", p.className)}
+                className={cn(
+                  "flex items-center justify-center rounded-full border border-background bg-foreground",
+                  p.className,
+                )}
                 style={{ width: (p.r ?? 6) * 2, height: (p.r ?? 6) * 2 }}
-              />
+              >
+                {p.icon}
+              </span>
             </MarkerContent>
+            {p.label && <MarkerTooltip>{p.label}</MarkerTooltip>}
             {p.popup && (
               <MarkerPopup closeButton offset={(p.r ?? 6) + 8} className="w-64 max-w-none">
                 {p.popup}

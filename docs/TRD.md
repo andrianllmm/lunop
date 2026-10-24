@@ -56,6 +56,7 @@ pjdsc-26/
 │   │   ├── dataset.py       download CCHAIN from HDX; build processed tables and barangays.geojson
 │   │   ├── features.py      design matrices per horizon and variant
 │   │   ├── rain_check.py    CCHAIN vs Open-Meteo archive (§5.5)
+│   │   ├── osm.py           OpenStreetMap facilities and waterways (context layers)
 │   │   ├── modeling/
 │   │   │   ├── train.py     fit the deployed variants → models/model.json
 │   │   │   ├── forecast.py  intervals, baseline ratios, alert levels
@@ -73,15 +74,16 @@ pjdsc-26/
 │   ├── lib/                 priority.ts, recommend.ts, spots.ts, db.ts,
 │   │                        locate.ts (GPS → barangay), outbox.ts (offline reports)
 │   └── public/data/         forecast.json, barangays.geojson, performance.json,
-│                            config.json, replay/*.json   (all committed)
+│                            config.json, facilities.geojson, waterways.geojson,
+│                            replay/*.json   (all committed)
 ├── data/                    raw/, interim/, processed/, external/ (gitignored; shared by eda/ and pipeline/)
 ├── .github/workflows/       forecast.yml
-└── Makefile                 setup, data, train, evaluate, replay, live, web, test, all
+└── Makefile                 setup, data, osm, train, evaluate, replay, live, web, test, all
 ```
 
 A monorepo: `pipeline/` (Python) and `web/` (Next.js) are separate projects. `pipeline/` follows [Cookiecutter Data Science](https://cookiecutter-data-science.drivendata.org/): one importable package with a module per stage, plus `models/` and `reports/`. `data/` stays at the root because `eda/` uses it too. `eda/` plays the role of `notebooks/`; new notebooks import from `lunop` instead of copying loaders. The root `Makefile` drives both projects.
 
-**Data stages:** `raw/` is CCHAIN as downloaded and never edited; `interim/` holds caches (city daily rain); `processed/` holds model-ready tables (`panel.parquet`, `events.parquet`, `zamboanga_brgy.parquet`); `external/` holds non-CCHAIN pulls (Open-Meteo archive).
+**Data stages:** `raw/` is CCHAIN as downloaded and never edited; `interim/` holds caches (city daily rain); `processed/` holds model-ready tables (`panel.parquet`, `events.parquet`, `zamboanga_brgy.parquet`); `external/` holds non-CCHAIN pulls (Open-Meteo archive, OpenStreetMap).
 
 ## 4. Data
 
@@ -96,6 +98,7 @@ A monorepo: `pipeline/` (Python) and `web/` (Next.js) are separate projects. `pi
 | Boundaries | CCHAIN `brgy_geography` | Barangay polygons | Map, GPS lookup |
 | Hospital access | CCHAIN `geoportal_doh_poi_health`, `mapbox_health_facility_brgy_isochrones` | Barangay | Access column and flag |
 | Infrastructure context | CCHAIN `osm_poi_water_body`, `google_open_buildings` | Barangay | Chronic-spot context (not scored) |
+| Facilities, waterways | OpenStreetMap (Overpass), fetched once | Point / line | Map context layers, nearest facility (not scored) |
 | Flood reports | `POST /api/reports` | Point × time | Exposure, corroboration, chronic spots |
 
 Iloilo City is PSGC `PH063022000`, with 180 barangays.
@@ -112,6 +115,7 @@ Iloilo City is PSGC `PH063022000`, with 180 barangays.
 **Static outputs** (committed to `web/public/data/`):
 - `barangays.geojson`: simplified polygons (~1e-4°, 5 decimals) with `psgc, name, area_km2, pop` (WorldPop 2020), `hazard_pct` (NOAH 100-yr low + med + high), `access30_pct` (pop % within 30 min of a hospital), `travel_min` (first isochrone of 5/15/30 min reaching half the pop; null if > 30), `hospital_dist_m`, `water_dist_m` (nearest river, stream, canal or drain), `bldg_density` (per km²). CCHAIN caps distances at 10 km.
 - `config.json`: every weight and assumption used by the TypeScript functions, so the UI can display them.
+- `facilities.geojson`, `waterways.geojson` (`make osm` = `python -m lunop.osm`): OSM points and lines clipped to the city. CCHAIN has only barangay-level counts and distances, so the layers come from OSM. Facilities are named hospitals, district health centers and barangay health stations (OSM maps about 18 of the city's BHS, so the UI labels them partial), plus a `nearest` lookup per psgc. Waterways are rivers, streams, canals and drains, the kinds behind `water_dist_m`. Evacuation centers are left out: OSM has only a handful. Context only; never scored.
 
 ## 5. Forecast model
 
@@ -321,8 +325,8 @@ Two route groups, with every page usable on a phone:
 | `/` (public) | Landing page: short intro, links to Report and the dashboard, EN/FIL |
 | `/dashboard` Overview | Alert banner and data date; surge chart (expected, 80% band, baseline); priority map; **one decision card** (current-phase recommendation); past performance |
 | `/replay` | Event picker (3 events); daily rain animation on the map; forecast vs actual chart; decision card evolving by day; simulated reports labelled |
-| `/priority` Priority areas | Ranked table (priority, pop, hazard, reports, dose range, access flag); detail panel; **Chronic flood spots** tab |
-| `/reports` Flood reports | Map of `GET /api/reports` pins sized by depth (24 h / 7 d / 1 yr, default 7 d); pins marked when they feed a countdown or repeat flood spot; list and detail (depth, duration, waded, barangay, time). No `ip_hash` or `client_id` shown |
+| `/priority` Priority areas | Ranked table (priority, pop, hazard, reports, dose range, access flag); detail panel with nearest health facility; toggleable facility pins (hospital / health center / BHS); **Chronic flood spots** tab with waterway lines |
+| `/reports` Flood reports | Map of `GET /api/reports` pins sized by depth (24 h / 7 d / 1 yr, default 7 d); pins marked when they feed a countdown or repeat flood spot; tap a pin for its report in a popup (depth, duration, waded, barangay, time). No `ip_hash` or `client_id` shown |
 | `/report` (public) | Mobile-first form in English and Filipino, using GPS with a barangay dropdown fallback |
 | `/methods` | Event study, LOEO table, back-test vs baselines, rain check, Zamboanga ρ with CI, dropped features and why, limitations |
 
@@ -338,7 +342,7 @@ Two route groups, with every page usable on a phone:
 | What | Strategy | Notes |
 |---|---|---|
 | App shell (JS, CSS, fonts, page HTML, `~offline` page, `maplibre-gl-worker.mjs`) | Precache at install | Every route opens offline |
-| `barangays.geojson`, `config.json`, `performance.json`, `replay/*.json` | Precache at install | Change only on deploy |
+| `barangays.geojson`, `facilities.geojson`, `waterways.geojson`, `config.json`, `performance.json`, `replay/*.json` | Precache at install | Change only on deploy |
 | `forecast.json` | Network first, cache fallback | Daily file; offline shows the cached copy and its `issued` date |
 | `GET /api/reports` | Network first, cache fallback | Offline shows the last fetched reports |
 | Basemap style, sprites, fonts and tiles (OpenFreeMap) | Cache first; Iloilo bounding box at z11–15 pre-warmed after install | Capped by a tile count limit; other areas cache as viewed |
