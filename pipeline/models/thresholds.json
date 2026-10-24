@@ -1,0 +1,12 @@
+{
+ "rain_only": {
+  "Elevated": 1.69,
+  "High": 1.94,
+  "Severe": 2.14
+ },
+ "with_cases": {
+  "Elevated": 1.69,
+  "High": 2.6,
+  "Severe": 3.7
+ }
+}

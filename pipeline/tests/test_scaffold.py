@@ -9,6 +9,7 @@ MODULES = [
     "lunop.rain_check",
     "lunop.replay",
     "lunop.modeling.train",
+    "lunop.modeling.forecast",
     "lunop.modeling.evaluate",
     "lunop.modeling.predict",
 ]
