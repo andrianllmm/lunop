@@ -90,7 +90,8 @@ Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
 
 The app has two parts, both open with no login (it holds no personal data, and judges need open access):
 
-- **Officer dashboard** with a sidebar: **Overview, Replay, Priority areas, Methods & Validation**.
+- **Officer dashboard** with a sidebar: **Overview, Replay, Priority areas, Flood reports, Methods & Validation**.
+- **Flood reports** shows community reports as pins sized by depth, with details on tap and which reports feed a countdown or a repeat flood spot. It is for looking, not a triage queue: no assign, resolve or status.
 - **Landing page** (`/`) that leads to the Report page or the dashboard.
 - **Public Report page** for residents and BHWs: a minimal header with an EN/FIL switch, no sidebar, and no priority scores or dose ranges.
 
@@ -146,7 +147,7 @@ Each recommendation shows its target, quantity, deadline, reason and source guid
 - Replay and Methods work fully offline. The Iloilo basemap is cached ahead of time.
 - Reports filed offline queue on the device (F4), with a visible count of pending reports.
 - Offline, the app can't refresh the forecast or see other people's new reports. A barangay's countdown starts only once corroborating reports reach the server.
-- **Acceptance:** after one online visit, in airplane mode, Overview, Priority areas, Replay and Methods load with data, and a report queues and sends on reconnect.
+- **Acceptance:** after one online visit, in airplane mode, Overview, Priority areas, Flood reports, Replay and Methods load with data, and a report queues and sends on reconnect.
 
 ### Methods & Validation page
 Back-test results, event study, the leave-one-event-out table, the Zamboanga check with its CI, and the limitations (§8). This page is where judges check the rigor.

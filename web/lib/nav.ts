@@ -1,4 +1,5 @@
 import {
+  DropletsIcon,
   FlaskConicalIcon,
   HistoryIcon,
   LayoutDashboardIcon,
@@ -16,6 +17,7 @@ export const navItems: NavItem[] = [
   { title: "Overview", href: "/dashboard", icon: LayoutDashboardIcon },
   { title: "Replay", href: "/replay", icon: HistoryIcon },
   { title: "Priority areas", href: "/priority", icon: MapPinnedIcon },
+  { title: "Flood reports", href: "/reports", icon: DropletsIcon },
   { title: "Methods", href: "/methods", icon: FlaskConicalIcon },
 ]
 

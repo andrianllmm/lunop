@@ -19,7 +19,8 @@ import { getJSON, type Performance } from "@/lib/data"
 import { fmtDate } from "@/lib/format"
 import { replayDay, type ReplayBundle, type ReplayEvent } from "@/lib/replay"
 import { DAY_MS } from "@/lib/time"
-import type { Barangay, Depth } from "@/lib/types"
+import { DEPTH_R } from "@/lib/depth"
+import type { Barangay } from "@/lib/types"
 
 const STEP_MS = 700
 
@@ -40,8 +41,6 @@ function rainColor(mm: number | undefined) {
   if (mm === undefined) return DRY
   return RAIN_BINS.find(([min]) => mm >= min)?.[1] ?? DRY
 }
-
-const DEPTH_R: Record<Depth, number> = { ankle: 3, knee: 4, waist: 5, chest: 6 }
 
 const OUTCOME: Record<ReplayEvent["outcome"], string> = { hit: "Hit", miss: "Miss", false_alarm: "False alarm" }
 
