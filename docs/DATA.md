@@ -1,6 +1,6 @@
 # Data dictionary
 
-The tables `make data` builds (`pipeline/lunop/dataset.py`). Inputs are CCHAIN CSVs in `data/raw/`, pinned by `pipeline/raw.sha256`. Cleaning rules are in [TRD.md §4](TRD.md#4-data); what the data says is in [FINDINGS.md](FINDINGS.md).
+The tables `make data` builds (`pipeline/lunop/dataset.py`). Inputs are CCHAIN CSVs in `data/raw/`, pinned by `pipeline/raw.sha256`.
 
 Conventions:
 - `psgc` is a barangay PSGC code (`adm4_pcode`, e.g. `PH063022001`), always a string.
