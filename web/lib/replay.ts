@@ -1,8 +1,5 @@
 import { config, type Config } from "@/lib/config"
-import { countdowns, type Countdown } from "@/lib/countdown"
-import { rankBarangays, type BarangayPriority } from "@/lib/priority"
-import { recommend, type Recommendation } from "@/lib/recommend"
-import { chronicSpots, type Spot } from "@/lib/spots"
+import { engineState, type EngineState } from "@/lib/state"
 import { localMidnight } from "@/lib/time"
 import type { Barangay, FloodReport, Forecast } from "@/lib/types"
 
@@ -30,17 +27,10 @@ export type ReplayBundle = ReplayEvent & {
   reports: FloodReport[]
 }
 
-export type ReplayDay = {
+/** Engine state at the end of the local day; everything observed by then counts. */
+export type ReplayDay = EngineState & {
   date: string
-  /** End of the local day; everything observed by then counts. */
-  now: Date
-  bulletin: Forecast
   rain: Map<string, number>
-  reports: FloodReport[]
-  ranked: BarangayPriority[]
-  countdowns: Map<string, Countdown>
-  spots: Spot[]
-  recommendations: Recommendation[]
 }
 
 /** The latest bulletin issued on or before `date`. */
@@ -53,11 +43,6 @@ export function replayDay(bundle: ReplayBundle, barangays: Barangay[], index: nu
   const { date } = bundle.days[index]
   const now = new Date(localMidnight(date, cfg.utc_offset_h, 1).getTime() - 1)
   const bulletin = bulletinOn(bundle.bulletins, date)
-  const reports = bundle.reports.filter((r) => Date.parse(r.observed_at) <= now.getTime())
   const rain = new Map(bundle.psgc.map((p, i) => [p, bundle.rain_brgy[index][i]]))
-  const ranked = rankBarangays(barangays, reports, bulletin.weeks, now, cfg)
-  const active = countdowns(reports, bulletin.level, now, cfg)
-  const spots = chronicSpots(reports, barangays, now, cfg)
-  const recommendations = recommend({ forecast: bulletin, ranked, countdowns: active, spots, now }, cfg)
-  return { date, now, bulletin, rain, reports, ranked, countdowns: active, spots, recommendations }
+  return { ...engineState(bulletin, barangays, bundle.reports, now, cfg), date, rain }
 }
