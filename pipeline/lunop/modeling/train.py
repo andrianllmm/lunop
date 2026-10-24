@@ -66,6 +66,19 @@ def quantile(m: dict, mu, q: float) -> np.ndarray:
     return stats.nbinom.ppf(q, n, n / (n + np.asarray(mu)))
 
 
+def exceed(m: dict, mu, k) -> np.ndarray:
+    """P(cases >= k) under NB2(mu, alpha)."""
+    n = 1 / m["alpha"]
+    return stats.nbinom.sf(np.asarray(k) - 1, n, n / (n + np.asarray(mu)))
+
+
+def p95(panel: pd.DataFrame, start: int | None = None, end: int | None = None) -> dict:
+    """Each city's 95th percentile of weekly cases over start..end (the Severe rule's outbreak bar)."""
+    y = panel.year
+    d = panel[y.ge(start or y.min()) & y.le(end or y.max())]
+    return d.groupby("city").cases.quantile(0.95).round().clip(lower=1).to_dict()
+
+
 def window(x: pd.DataFrame, start: int | None = None, end: int | None = None) -> pd.DataFrame:
     """Rows whose target week falls in start..end (inclusive; None = open)."""
     year = x.target_date.dt.year
@@ -84,6 +97,7 @@ def main() -> None:
     out = {
         "data_end": panel.date[panel.cases.notna()].max().date().isoformat(),
         "rain_scale": check["scale"],  # multiply live Open-Meteo rain by this (TRD 5.5)
+        "p95": p95(panel, TRAIN_START_YEAR),
         "models": {v: {str(h): m for h, m in hs.items()} for v, hs in models.items()},
     }
     with atomic(MODELS / "model.json") as tmp:
