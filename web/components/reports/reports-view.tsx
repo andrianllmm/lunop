@@ -84,10 +84,10 @@ export function ReportsView() {
             r: DEPTH_R[r.depth],
             className: pinClass(roles.get(r.client_id), r.client_id === selected),
             onClick: () => setSelected(r.client_id),
+            popup: <Detail report={r} name={names.get(r.psgc)} roles={roles.get(r.client_id)} />,
           },
         ],
   )
-  const current = shown.find((r) => r.client_id === selected)
 
   return (
     <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
@@ -124,10 +124,9 @@ export function ReportsView() {
       <Card>
         <CardHeader>
           <CardTitle>Reports</CardTitle>
-          <CardDescription>Tap a pin or a row to see the report.</CardDescription>
+          <CardDescription>Tap a pin on the map to open its report. Tap a row to find its pin.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {current && <Detail report={current} name={names.get(current.psgc)} roles={roles.get(current.client_id)} />}
           {reports === null && reportsError ? (
             <p className="text-sm text-muted-foreground">Could not load reports ({reportsError}).</p>
           ) : shown.length === 0 ? (
@@ -173,14 +172,14 @@ function Detail({
   roles: { countdown: boolean; spot: boolean } | undefined
 }) {
   const rows: [string, string][] = [
-    ["Barangay", name ?? report.psgc],
     ["Water depth", DEPTH_LABEL[report.depth]],
     ["Lasted", duration(report.duration_h)],
     ["Waded through it", report.waded ? "Yes" : "No"],
     ["Seen", fmtInstant(report.observed_at)],
   ]
   return (
-    <div className="flex flex-col gap-3 rounded-md border p-3 text-sm">
+    <div className="flex flex-col gap-3 text-sm">
+      <p className="pr-6 font-medium">{name ?? report.psgc}</p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">

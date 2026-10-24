@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 
-import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, useMap } from "@/components/ui/map"
+import { Map, MapControls, MapGeoJSON, MapMarker, MarkerContent, MarkerPopup, useMap } from "@/components/ui/map"
 import type { Barangay } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -14,7 +14,16 @@ export type BarangayFeature = {
 
 export type BarangayCollection = { type: "FeatureCollection"; features: BarangayFeature[] }
 
-export type MapPoint = { id: string; lat: number; lon: number; r?: number; className?: string; onClick?: () => void }
+export type MapPoint = {
+  id: string
+  lat: number
+  lon: number
+  r?: number
+  className?: string
+  onClick?: () => void
+  /** Card opened by tapping the pin. */
+  popup?: React.ReactNode
+}
 
 /** Red for outlines; MapLibre paint can't read CSS variables. */
 const OUTLINE = "#e5484d"
@@ -148,6 +157,11 @@ export function BarangayMap({
                 style={{ width: (p.r ?? 6) * 2, height: (p.r ?? 6) * 2 }}
               />
             </MarkerContent>
+            {p.popup && (
+              <MarkerPopup closeButton offset={(p.r ?? 6) + 8} className="w-64 max-w-none">
+                {p.popup}
+              </MarkerPopup>
+            )}
           </MapMarker>
         ))}
         <MapControls showZoom />
