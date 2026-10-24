@@ -68,7 +68,7 @@ What the data says, what it means for LUNOP, and what's still open. Source: the 
 | Weak High+ alerts from the live `rain_only` model | Flags High+ on 1 of 54 surge weeks (2%) in 2018–2022; reaches Elevated on 33% | Stated next to every live alert; `with_cases` flags High+ on 6 of 7 LOEO surges, and becomes the live model once weekly case data arrives | Open; needs a CHO case feed |
 | Iloilo 3-week forecast worse with rain in the EDA (−10%) | Countdown and hospital readiness lean on weeks 2–3 | Re-tested in the back-test: `with_cases` −16% deviance at h = 3; an Iloilo rain slope didn't help and isn't used | Resolved |
 | PIDSR week definition unknown (onset vs report) | Shifts how the 2–3 week lag is read | Stated as a limitation; listed as an open question for the CHO | Open |
-| NOAH maps predate recent flood control (e.g., Jaro floodway) | Hazard may overstate areas now protected | Stated as a limitation; community reports and chronic flood spots show where flooding still happens | Open; needs post-flood-control maps |
+| NOAH maps may predate recent flood control (e.g., the Jaro floodway, year unverified) | Hazard may overstate areas now protected | Stated as a limitation; community reports and chronic flood spots show where flooding still happens | Open; needs post-flood-control maps |
 | Offline field use | Health workers and residents lose signal during floods | Installable PWA: data and basemap precached; reports queued on the device and sent when back online | Done (#25) |
 
 ## Model

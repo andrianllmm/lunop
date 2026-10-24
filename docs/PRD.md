@@ -200,6 +200,39 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 | Checking where flooding actually happens | Sentinel-1 flood maps; accumulated reports |
 | Data after 2022 | Mendeley PIDSR/EDCS 2019–2023; CHO data request |
 
+### Future directions and real-world deployment
+
+LUNOP is a prototype; no agreement with the Iloilo City Health Office (CHO) exists yet. This is the proposed path to real use.
+
+**1. Proposed pilot with the Iloilo CHO (one rainy season, June–November)**
+
+| Who | When | Decision LUNOP supports |
+|---|---|---|
+| CHO epidemiologist / health officer | Each heavy-rain alert; weekly through the season | Which barangays get prophylaxis first, how many doses to stock, when to start case finding, when to alert hospitals |
+| Barangay health workers | During and after floods | Report flooding and wading from a phone, offline if needed; their reports start the 72-hour countdown |
+| Hospitals | 1–2 weeks before the forecast peak | Staff and stock for the expected peak week |
+| City Engineering / DRRMO | After the season | Clear drains at chronic flood spots first |
+
+Success for the pilot: the CHO uses the alert and ranking on real events, and we record whether surges were caught, how early, and what the CHO did differently.
+
+**2. Data needed**
+- **Weekly city case counts** from PIDSR, so the live forecast can switch from `rain_only` to `with_cases`. On past events, `with_cases` flagged High+ on 6 of 7 surges; `rain_only` rarely does (FINDINGS, Challenges).
+- **Barangay-level cases** for Iloilo, so the ranking can be validated where it's used.
+- Both would need a data sharing agreement with the CHO under the Data Privacy Act of 2012 (RA 10173). LUNOP only needs aggregated weekly counts, never patient records.
+
+**3. Validate the barangay ranking.** Once Iloilo barangay cases exist, repeat the Zamboanga check (rank correlation of hazard and priority vs case rate) on Iloilo itself, and re-weight the score if needed.
+
+**4. Refresh the hazard layer.** The NOAH maps come from mid-2010s surveys and may predate flood control works such as the Jaro floodway (year to be verified, §11). Swap in post-flood-control maps when available; meanwhile, accumulated community reports show where flooding still happens.
+
+**5. Scale to other cities.** The forecast model is already pooled across the 12 CCHAIN cities. A new city needs its barangay polygons, hazard and population (already in CCHAIN), its own alert thresholds, and a local CHO partner.
+
+**6. Hand off chronic flood spots.** Share the repeat-flood-spot list with City Engineering after each season, with dates and depths from community reports, as input to drainage work.
+
+**7. Sustainability**
+- **Hosting:** the Next.js app on Vercel, a small Postgres database (Neon) for reports, and a daily GitHub Actions job. Pilot traffic is expected to fit free tiers; confirm the limits before launch.
+- **Maintenance:** the daily forecast runs on its own; refit the model once a year as new case data arrives; refresh OSM layers with `make osm`.
+- **Ownership:** for long-term use, hand the deployment and data agreement to the CHO or the city ICT office.
+
 ## 11. Open questions
 
 - Current DOH prophylaxis guideline: exposure tiers, child dosing, exclusions. The latest we found is PhilHealth's summary of the 2010 clinical practice guideline (doxycycline 200 mg weekly pre-exposure; post-exposure doxycycline, duration by exposure; Philippine Health Insurance Corporation, n.d.).
