@@ -1,6 +1,6 @@
 # TRD: LUNOP
 
-> Technical design for [PRD.md](PRD.md). Status: revised, 2026-10-22.
+> Technical design for [PRD.md](PRD.md). Status: revised, 2026-10-24.
 
 ## 1. Architecture
 
@@ -39,7 +39,7 @@ GitHub Action, 06:00 PHT daily:
 
 ```
 pjdsc-26/
-├── docs/                    PRD.md, TRD.md
+├── docs/                    PRD.md, TRD.md, FINDINGS.md
 ├── eda/                     EDA notebooks (Jupytext .py + .ipynb), reports/ HTML
 ├── scripts/
 │   └── download.py          fetch CCHAIN tables from HDX → data/raw/
@@ -68,17 +68,19 @@ pjdsc-26/
 | Data | Source | Granularity | Use |
 |---|---|---|---|
 | Leptospirosis cases | CCHAIN `disease_pidsr_totals` | City × week, 12 cities, 2008–2022 | Training, back-test, replay |
-| Barangay cases | CCHAIN `disease_lgu_disaggregated_totals` | Barangay × week (Zamboanga, CDO) | Ranking check only |
+| Barangay cases | CCHAIN `disease_lgu_disaggregated_totals` | Barangay × week (only Zamboanga usable, 2013–2022) | Ranking check only |
 | Rain (history) | CCHAIN `climate_atmosphere.pr` | Barangay × day, 2003–2022 | Training, replay |
 | Rain (live) | Open-Meteo forecast + archive APIs | Point × day | Live forecast |
 | Flood hazard | CCHAIN `project_noah_hazards` | Barangay; 25-yr low/med/high % area | Exposure |
-| Population | CCHAIN `worldpop_population` | Barangay × year | Exposure, doses |
+| Population | CCHAIN `worldpop_population` | Barangay × year, to 2020 (later years reuse 2020) | Exposure, doses |
 | Boundaries | CCHAIN `brgy_geography` | Barangay polygons | Map, GPS lookup |
 | Hospital access | CCHAIN `geoportal_doh_poi_health`, `mapbox_health_facility_brgy_isochrones` | Barangay | Access column and flag |
 | Infrastructure context | CCHAIN `osm_poi_water_body`, `google_open_buildings` | Barangay | Chronic-spot context (not scored) |
 | Flood reports | `POST /api/reports` | Point × time | Exposure, corroboration, chronic spots |
 
 Iloilo City is PSGC `PH063022000`, with 180 barangays.
+
+**Calendar:** PIDSR weeks start Monday and use 52-week years, so the weeks of 2012-12-31 and 2018-01-01 are missing. `build.py` reindexes each city to the full weekly calendar so a row shift is always a one-week lag. EDA and data checks: [FINDINGS.md](FINDINGS.md).
 
 **Static outputs** (committed to `web/public/data/`):
 - `barangays.geojson`: simplified polygons (~1e-4°) with `psgc, name, pop, hazard_pct, access30_pct, nearest_facility, travel_min, water_dist_m, bldg_density`.
@@ -99,6 +101,7 @@ log μ = city_c + s(woy_{t+h}) + Σ_{k=0..8} β_k · log1p(rain[c, t+h−k]) + �
 - Rain lags after week t use Open-Meteo forecast rain (up to 16 days), then the seasonal mean rain for that week.
 - `level_c`: mean log cases over the city's past 52 weeks, to absorb long-term trends.
 - One model per horizon h ∈ {1, 2, 3, 4}. Dispersion α is estimated by maximum likelihood.
+- **Iloilo at h ≥ 3 is unproven.** In the EDA back-test, adding rain to season + recent cases cut Iloilo's all-weeks error by 9% at h = 1 and 4% at h = 2, but raised it by 10% at h = 3. `evaluate.py` reports every metric per horizon, and tests an Iloilo × rain interaction. If h = 3–4 still lose on post-storm weeks, the UI caveats those weeks.
 - **Two variants**, fitted in the same loop:
   - `with_cases` includes γ. It is used for replay and the back-test, and compared against the seasonal + recent-cases baseline.
   - `rain_only` drops both γ and `level_c`, which need recent cases. It is used live, where there are no current case counts.
@@ -140,7 +143,7 @@ Applied to the maximum `ratio` over weeks +1 to +4. Thresholds are tuned on the 
 - Alert hit rate and false-alarm rate.
 
 **Secondary**
-- All-weeks Poisson deviance and MAE on 2018–2022, for all cities and for Iloilo, reporting the 2–7% openly.
+- All-weeks Poisson deviance and MAE on 2018–2022, per horizon, for all cities and for Iloilo, reporting the Iloilo h = 3 loss openly. EDA baseline: ~9–11% gain across cities; Iloilo +9%, +4%, −10% at h = 1–3.
 - Ablations: without rain; without the Sendong-era weeks (CDO, Iloilo 2011–12).
 - Event-study curve: cases ÷ seasonal norm at weeks −2 to +6 after heavy rain.
 
@@ -159,6 +162,8 @@ The model is trained on CCHAIN rain and run live on Open-Meteo rain. Both are li
 ### 5.6 Known limitations
 
 - **PIDSR week meaning** (symptom onset vs report) is unknown, which affects how the lag is read.
+- **Iloilo long-horizon skill:** rain hurts the all-weeks h = 3 forecast for Iloilo (§5.1).
+- **Barangay check is one city:** Zamboanga ρ = 0.23 (95% CI 0.03–0.40), carried by the 25-yr *medium* hazard layer; *high* alone shows nothing.
 - **Outliers:** one Sendong-era week (554 cases, CDO) can pull the coefficients; see the ablation.
 - **Non-stationarity:** Iloilo's flood control works (~2012, to be verified) may have changed the relationship. Test with a post-2012 indicator.
 - **Data ends in 2022;** live mode runs without current cases.

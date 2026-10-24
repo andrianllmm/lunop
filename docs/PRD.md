@@ -1,7 +1,7 @@
 # PRD: LUNOP
 
 > **L**eptospirosis **U**psurge **N**owcasting & **O**utbreak **P**revention. *Lunop* is Hiligaynon for "flood".
-> Team Random Seed 42, PJDSC 2026. Status: revised, 2026-10-22.
+> Team Random Seed 42, PJDSC 2026. Status: revised, 2026-10-24.
 
 ## 1. Summary
 
@@ -23,27 +23,32 @@ Over many storms, residents' reports also build a list of **chronic flood spots*
 - The chain is **rain → flooding at a place → people forced to wade (*lusob*) → infection → cases 2–3 weeks later.** Weather alone describes only the first link.
 - The Philippine response is reactive. Code White alerts are national and qualitative. Prophylaxis goes to "high-risk persons in flood-affected areas" with no way to choose which ones. PIDSR confirms outbreaks only after people are sick (Labana, 2026).
 - We found no operational system that turns "this much rain fell" into "expect this many cases, in these barangays, by this date; do this now". The closest ones we found are research models and proposals.
-- The problem is local and recurring. Iloilo City reported the most leptospirosis cases of the 12 CCHAIN cities: 3,933 of 8,034 PIDSR cases from 2008 to 2022.
+- The problem is local and recurring. Iloilo City reported the most leptospirosis cases of the 12 CCHAIN cities: 3,948 of 8,034 PIDSR cases (49%) from 2008 to 2022.
 
 ### Evidence from our analysis (CCHAIN, 2008–2022)
 
+Full results, notebooks and open issues: [FINDINGS.md](FINDINGS.md).
+
 | Finding | Result |
 |---|---|
-| Lag between heavy rain and cases (12 cities, controlling for city, year, season) | Effect peaks 2–3 weeks after rain. Effect size by lag 0–4 weeks: 1.02, 1.08, 1.19, **1.34**, 1.17 |
-| Dose–response (rain 2 weeks earlier, vs weeks under 10 mm) | 2.0× at 10–50 mm, 4.9× at 100–200 mm, **8.6× at 200–400 mm** |
+| Lag between heavy rain and cases (12 cities, controlling for city, year, season) | Effect peaks 2–3 weeks after rain. Effect size by lag 0–4 weeks: 1.02, 1.08, 1.18, **1.34**, 1.18 |
+| Dose–response (rain 2 weeks earlier, vs weeks under 10 mm) | 2.0× at 10–50 mm, 4.8× at 100–200 mm, **8.6× at 200–400 mm** |
 | After the heaviest-rain weeks, all cities | **2.8× seasonal norm at week 2**, back to normal by week 6 |
 | After the heaviest-rain weeks, Iloilo (16 events) | **2.9× at week 2**, 2.7× at week 3 |
 | Robustness | Holds without the Sendong-era outbreaks, and without Iloilo |
-| Out-of-sample gain from rain, all weeks (2018–2022 held out) | About 10% lower error across cities; **only 2–7% for Iloilo** |
-| River discharge (GloFAS, Iloilo) | Correlates 0.6 with rain; adds about 1% on top of rain. **Tested and dropped** |
-| Barangay flood hazard vs case rate (Zamboanga) | Spearman **0.22 (95% CI 0.03–0.40)** for medium/high 25-yr hazard |
-| Barangay infrastructure features (Zamboanga, Cagayan de Oro) | Signs **flip between cities**; better hospital access goes with *more* recorded cases. This is **detection bias**: barangay counts show where cases get recorded, not where people get infected |
+| Out-of-sample gain from rain, all weeks (2018–2022 held out) | About 10% lower error across cities at 1–3 weeks ahead. Iloilo: **9% at 1 week, 4% at 2, 10% worse at 3** |
+| River discharge (GloFAS, Iloilo, earlier analysis) | Correlates 0.6 with rain; adds about 1% on top of rain. **Tested and dropped** |
+| Barangay flood hazard vs case rate (Zamboanga) | Spearman **0.23 (95% CI 0.03–0.40)** for medium/high 25-yr hazard; the signal comes from the *medium* layer |
+| Barangay infrastructure features (Zamboanga, Cagayan de Oro, earlier analysis) | Signs **flip between cities**; better hospital access goes with *more* recorded cases. This is **detection bias**: barangay counts show where cases get recorded, not where people get infected |
+| Who gets infected (Zamboanga) | Mostly **men aged 20–49** |
+| Season | Cases peak August–November; Iloilo peaks in **October** |
 
 ### What the evidence supports
 
 - **Strong:** the **size and timing of the city-level surge** after heavy rain. This is the core of the product.
 - **Weak:** the **barangay ranking**. It is presented as **estimated exposure**, not as a validated case prediction.
-- **Why the 2–7% doesn't sink the product:** most weeks are quiet, and an all-weeks average dilutes the signal. The model's value is concentrated in the weeks after storms, so we validate it there (§7).
+- **Why the small Iloilo all-weeks gain doesn't sink the product:** most weeks are quiet, and an all-weeks average dilutes the signal. The model's value is concentrated in the weeks after storms, so we validate it there (§7).
+- **Not yet supported:** Iloilo forecasts **3+ weeks ahead**. Adding rain made the all-weeks 3-week forecast worse. Weeks +3 and +4 are shown with wider caveats until the post-storm back-test confirms them.
 - **Infrastructure:** built-up area, density and distance to water don't predict barangay cases consistently, so they are **not scored**. They appear as the *reason* a chronic flood spot floods (F6).
 
 ## 3. Goals and non-goals
@@ -100,7 +105,7 @@ The app is a dashboard with a sidebar: **Overview, Replay, Barangays, Report, Me
 
 ### F3. Recommendations (Overview decision card)
 Rules keyed to alert level and days since the rain peak:
-- **0–72 h:** prophylaxis to the top barangays with a **dose range** (assumption shown); avoid-wading advisory.
+- **0–72 h:** prophylaxis to the top barangays with a **dose range** (assumption shown); avoid-wading advisory aimed at working-age men, who make up most cases.
 - **Days 3–10:** active case finding in the top barangays.
 - **Days 7–21:** hospital readiness: peak week, expected cases, stock checklist.
 - **Forecast storm, not yet arrived:** pre-position stock.
@@ -136,7 +141,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 | **Peak timing** after top-2% rain events (Iloilo, leave-one-event-out) | Predicted peak within ±1 week of actual, in most events |
 | **Post-event error**: weeks +1 to +6 after top-2% events vs (a) seasonal only and (b) seasonal + recent cases | Lower error than both |
 | Alert hit rate and false-alarm rate | Reported; "High" fires in about 5% of weeks |
-| All-weeks error, 2018–2022 held out (secondary) | Reported for all cities and for Iloilo, including the 2–7% |
+| All-weeks error, 2018–2022 held out (secondary) | Reported by horizon for all cities and for Iloilo, including the 3-week loss |
 | Barangay ranking check (Zamboanga) | Rank correlation **with 95% CI** and the detection-bias caveat |
 | Report form completion time | Under 30 s (n ≥ 5) |
 | Finals: expert review (CHO or public health instructor); SUS | Rated relevant and feasible; SUS ≥ 70 |
@@ -144,7 +149,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 ## 8. Constraints and assumptions
 
 - Case data is **city-level weekly, 2008–2022**. Barangay priority comes from exposure, not from observed barangay cases.
-- Barangay case data is distorted by **detection bias**, so it can only weakly validate a barangay ranking.
+- Only **Zamboanga** has usable barangay case data, and **Iloilo has none**, so the ranking is checked in another city. That data is also distorted by **detection bias**, so it can only weakly validate a barangay ranking.
 - NOAH hazard maps come from mid-2010s surveys and predate some flood control works (the Jaro floodway, year to be verified).
 - Live mode has no current case counts; it relies on rain and seasonality.
 - Doxycycline needs a prescription. Dose ranges are for **supply planning** only, and follow current DOH guidance (to be verified).
@@ -155,7 +160,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 | Risk | Mitigation |
 |---|---|
 | "Why a model? DOH already says give doxy after floods." | Pitch the size, timing and targeting, which DOH guidance lacks (§1) |
-| Weak Iloilo all-weeks gain (2–7%) | Lead with event-conditional validation; show the 2–7% openly |
+| Weak Iloilo all-weeks gain (9% → 4% → −10% at 1–3 weeks) | Lead with event-conditional validation; show the per-horizon numbers openly; caveat weeks +3 and +4 |
 | Few cases make forecasts noisy | Train on all 12 cities; show ranges and multipliers, not exact counts |
 | False alarms reduce trust | Graded alerts; hit and false-alarm rates shown in the app; replay includes a miss |
 | Barangay claims questioned | "Estimated exposure" label; Zamboanga CI; detection-bias explanation |
@@ -189,6 +194,7 @@ Back-test results, event study, the leave-one-event-out table, the Zamboanga che
 - Current DOH prophylaxis guideline: exposure tiers, child dosing, exclusions.
 - A CHO contact for expert review and recent case data.
 - Does PIDSR's week mean symptom onset or reporting date? It changes how the lag is read.
+- Does the Iloilo 3-week loss hold on post-storm weeks, and does an Iloilo-specific rain term fix it?
 - When was the Jaro floodway completed, and what year are the NOAH Iloilo maps from?
 
 ## References

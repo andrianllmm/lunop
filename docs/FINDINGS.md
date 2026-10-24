@@ -51,8 +51,7 @@ What the data says, what it means for LUNOP, and what's still open. Source: the 
 
 ## Open issues
 
-- ⚠️ **Iloilo 3-week forecast gets worse with rain (−10%).** This conflicts with the PRD's "2–7%". Check forecast skill on post-storm weeks and test an Iloilo-specific rain term before relying on h = 3.
+- ⚠️ **Iloilo 3-week forecast gets worse with rain (−10%).** Check forecast skill on post-storm weeks and test an Iloilo-specific rain term before relying on h = 3.
 - Iloilo has no barangay case data, so the ranking can't be validated where it's used.
 - PIDSR week definition (onset vs report) affects how the lag is read.
 - NOAH hazard predates recent flood control.
-- PRD says 3,933 Iloilo cases; the data gives 3,948.
