@@ -6,14 +6,14 @@ import pandas as pd
 import statsmodels.api as sm
 from scipy import optimize, stats
 
-from lunop.config import HORIZONS, MODELS, PROCESSED, RAIN_ONLY_START_YEAR
+from lunop.config import HORIZONS, MODELS, PROCESSED, TRAIN_START_YEAR
 from lunop.dataset import atomic
 from lunop.features import design, features
 
-# Deployed variants and the first target year each trains on. rain_only has no level_c, so fitted
-# from 2008 it predicts Iloilo 2018-2022 at about twice the observed level (worse than seasonal
-# only). seasonal is the live baseline that ratios are taken against, so it shares that window.
-DEPLOYED = {"with_cases": None, "rain_only": RAIN_ONLY_START_YEAR, "seasonal": RAIN_ONLY_START_YEAR}
+# Deployed variants. seasonal is the baseline that forecast ratios are taken against.
+# All train from TRAIN_START_YEAR: from 2008, rain_only (no level_c) predicts Iloilo 2018-2022 at
+# about twice the observed level, and with_cases loses 10-16% on Iloilo's held-out deviance.
+DEPLOYED = ("with_cases", "rain_only", "seasonal")
 
 
 def matrix(x: pd.DataFrame, cities: list[str], cols: list[str]) -> np.ndarray:
@@ -73,8 +73,8 @@ def window(x: pd.DataFrame, start: int | None = None, end: int | None = None) ->
 
 
 def fit_all(panel: pd.DataFrame, end: int | None = None) -> dict:
-    """{variant: {h: model}} for the DEPLOYED variants, fitted on target years up to `end`."""
-    return {v: {h: fit(window(design(panel, h, v), start, end)) for h in HORIZONS} for v, start in DEPLOYED.items()}
+    """{variant: {h: model}} for the DEPLOYED variants, fitted on target years TRAIN_START_YEAR..end."""
+    return {v: {h: fit(window(design(panel, h, v), TRAIN_START_YEAR, end)) for h in HORIZONS} for v in DEPLOYED}
 
 
 def main() -> None:

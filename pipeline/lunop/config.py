@@ -26,7 +26,7 @@ FORECAST_WEEKS = 2  # weeks after t covered by the 16-day rain forecast; later w
 RECENT_WEEKS = 2  # recent_cases = mean cases over weeks t-1..t (skips PIDSR gaps)
 HARMONICS = 2  # sine/cosine pairs of week of year
 TRAIN_END_YEAR = 2017  # fit 2008-2017, validate 2018-2022
-RAIN_ONLY_START_YEAR = 2013  # rain_only has no level_c, so the 2011-12 outbreaks would inflate its intercepts
+TRAIN_START_YEAR = 2013  # first target year the models train on; the 2011-12 outbreaks inflate fits that include them
 CLIM_START_YEAR = 2003  # rain climatology uses 2003..TRAIN_END_YEAR, so it never sees validation years
 LEVEL_WEEKS = 52  # trailing window for level_c
 EVENT_QUANTILE = 0.98  # top-2% rain weeks per city
